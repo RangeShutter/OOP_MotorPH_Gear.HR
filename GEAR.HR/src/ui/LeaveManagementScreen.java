@@ -52,7 +52,7 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
         JPanel content = createContentPanel(frame);
         content.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         mainPanel.add(content, BorderLayout.CENTER);
-        mainPanel.add(createFooterPanel("© 2025 GEAR.HR - Leave Management"), BorderLayout.SOUTH);
+        mainPanel.add(createFooterPanel("© Year 2026 GEAR.HR - Leave Management"), BorderLayout.SOUTH);
         frame.add(mainPanel);
         frame.setVisible(true);
     }
@@ -71,7 +71,7 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
         JPanel content = createContentPanel(frame);
         content.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         mainPanel.add(content, BorderLayout.CENTER);
-        mainPanel.add(createFooterPanel("© 2025 GEAR.HR - Leave Management"), BorderLayout.SOUTH);
+        mainPanel.add(createFooterPanel("© Year 2026 GEAR.HR - Leave Management"), BorderLayout.SOUTH);
         frame.add(mainPanel);
         frame.setVisible(true);
     }

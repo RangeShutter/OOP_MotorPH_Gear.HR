@@ -478,7 +478,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         };
         footerPanel.setOpaque(false);
         footerPanel.setBorder(BorderFactory.createEmptyBorder(15, 30, 15, 30));
-        JLabel footerLabel = new JLabel("© 2025 GEAR.HR - Employee Profiles");
+        JLabel footerLabel = new JLabel("© Year 2026 GEAR.HR - Employee Profiles");
         footerLabel.setFont(new Font("Garet", Font.PLAIN, 12));
         footerLabel.setForeground(TEXT_WHITE);
         footerLabel.setHorizontalAlignment(SwingConstants.CENTER);

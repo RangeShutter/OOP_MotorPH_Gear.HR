@@ -346,7 +346,7 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         JPanel footerPanel = new JPanel(new BorderLayout());
         footerPanel.setBackground(HEADER_DARK);
         footerPanel.setBorder(BorderFactory.createEmptyBorder(15, 30, 15, 30));
-        JLabel copyrightLabel = new JLabel("© 2025 GEAR.HR - Attendance Tracking");
+        JLabel copyrightLabel = new JLabel("© Year 2026 GEAR.HR - Attendance Tracking");
         copyrightLabel.setFont(new Font("Garet", Font.PLAIN, 12));
         copyrightLabel.setForeground(TEXT_WHITE);
         copyrightLabel.setHorizontalAlignment(SwingConstants.CENTER);

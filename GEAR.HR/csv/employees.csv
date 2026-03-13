@@ -1,7 +1,7 @@
 EmployeeNumber,LastName,FirstName,SSS,PhilHealth,TIN,PagIBIG,Email,Position,Address,Phone
-1001,Bactong,Colin,123456789,123456789012,123-456-789,123456789012,Colin@MotorPH.com,Developer,Philippines,555-555-5555
-1002,Bactong,Charlize,987654321,210987654321,987-654-321,210987654321,Charlize@MotorPH.com,Developer,Philippines,555-555-5555
-1003,Calipayan,Angelica,123456789,12345678912,123-456-789,12345678912,Angelica@MotorPH.com,Developer,Philippines,555-555-5555
+1001,Bactong,Colin,12-3467899-6,123456789012,123-456-789-000,123456789012,Colin@MotorPH.com,Developer,Philippines,961-123-478
+1002,Bactong,Charlize,98-7654321-4,210987654321,987-654-321-000,210987654321,Charlize@MotorPH.com,Developer,Philippines,992-555-471
+1003,Calipayan,Angelica,12-3456789-9,123456789312,123-456-984-000,123456789212,Angelica@MotorPH.com,Developer,Philippines,985-245-487
 1038,Crane,Yzabelle,12-5648126-9,854112497884,154-567-445-000,748542211444,Yzabelle@motorph.com,Developer,Philippines,919-854-479
 1004,Garcia,Manuel III,44-4506057-3,820126853951,442-605-657-000,691295330870,MGarcia@motorph.com,Chief Executive Officer,Philippines,966-860-270
 1005,Lim,Antonio,52-2061274-9,331735646338,683-102-776-000,663904995411,ALim@motorph.com,Chief Operating Officer,Philippines,171-867-411

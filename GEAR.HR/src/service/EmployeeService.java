@@ -20,9 +20,7 @@ public class EmployeeService implements IEmployeeService {
         this.repository = repository;
         List<Employee> loaded = repository.load();
         employees.addAll(loaded);
-        if (employees.isEmpty()) {
-            addSampleEmployees();
-        }
+    
     }
 
     /** [INTERFACE] Implements IEmployeeService.loadEmployeesFromCSV. */
@@ -38,17 +36,6 @@ public class EmployeeService implements IEmployeeService {
         repository.save(new ArrayList<>(employees));
     }
 
-    private void addSampleEmployees() {
-        employees.add(new Employee(
-            "1001", "Bactong", "Colin", "123456789", "123456789012", "123-456-789", "123456789012",
-            "Colin@MotorPH.com", "Developer", "Leyte, Palo", "0960 270 7931"
-        ));
-        employees.add(new Employee(
-            "1002", "Bactong", "Charlize", "987654321", "210987654321", "987-654-321", "210987654321",
-            "Charlize@MotorPH.com", "Manager", "Negros Occidental Silay City", "555-0202"
-        ));
-        saveEmployeesToCSV();
-    }
 
     /** [INTERFACE] Implements IEmployeeService.getAllEmployees. */
     @Override

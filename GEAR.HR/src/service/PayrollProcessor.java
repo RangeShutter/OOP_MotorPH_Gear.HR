@@ -21,10 +21,6 @@ public class PayrollProcessor {
     public PayrollProcessor(IPayrollRepository repository) {
         this.repository = repository;
         payrollData.putAll(repository.load());
-        if (payrollData.isEmpty()) {
-            initializeSamplePayrollData();
-            savePayrollDataToCSV();
-        }
     }
 
     public void loadPayrollDataFromCSV() {
@@ -47,22 +43,6 @@ public class PayrollProcessor {
             if (built.isValid()) toSave.put(e.getKey(), built);
         }
         repository.save(toSave);
-    }
-
-    private void initializeSamplePayrollData() {
-        double base1 = 35000.0, base2 = 60000.0, base3 = 45000.0;
-        float rice1 = 1500.0f, phone1 = 1000.0f, cloth1 = 800.0f;
-        float rice2 = 1500.0f, phone2 = 800.0f, cloth2 = 600.0f;
-        float rice3 = 1500.0f, phone3 = 900.0f, cloth3 = 700.0f;
-        payrollData.put("1001", new PayrollData(base1,
-            PayrollUtils.calculateSSSAmount(base1), PayrollUtils.calculatePhilHealthAmount(base1), PayrollUtils.calculatePagIbigAmount(base1),
-            (float) PayrollUtils.calculateWithholdingTax(base1, rice1, phone1, cloth1), rice1, phone1, cloth1));
-        payrollData.put("1002", new PayrollData(base2,
-            PayrollUtils.calculateSSSAmount(base2), PayrollUtils.calculatePhilHealthAmount(base2), PayrollUtils.calculatePagIbigAmount(base2),
-            (float) PayrollUtils.calculateWithholdingTax(base2, rice2, phone2, cloth2), rice2, phone2, cloth2));
-        payrollData.put("1003", new PayrollData(base3,
-            PayrollUtils.calculateSSSAmount(base3), PayrollUtils.calculatePhilHealthAmount(base3), PayrollUtils.calculatePagIbigAmount(base3),
-            (float) PayrollUtils.calculateWithholdingTax(base3, rice3, phone3, cloth3), rice3, phone3, cloth3));
     }
 
     private static PayrollData getDefaultPayrollData() {

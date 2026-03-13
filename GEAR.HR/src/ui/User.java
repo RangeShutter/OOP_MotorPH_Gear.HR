@@ -143,9 +143,6 @@ public class User {
         constraints.insets = new Insets(10, 0, 10, 0);
         constraints.gridy++;
         constraints.gridwidth = 2;
-        rightPanel.add(createGuestInfoLabel(), constraints);
-        constraints.gridy++;
-        constraints.gridwidth = 2;
         JButton loginButton = createLoginButton(loginFrame, usernameField, passwordField, ctx);
         rightPanel.add(loginButton, constraints);
         return rightPanel;
@@ -192,14 +189,6 @@ public class User {
         passwordField.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(52, 152, 219)));
         passwordField.setPreferredSize(new Dimension(260, 32));
         return passwordField;
-    }
-
-    private static JLabel createGuestInfoLabel() {
-        JLabel guestLabel = new JLabel("Guest Access: Use 'Guest' for both ID and Password");
-        guestLabel.setFont(new Font("Garet", Font.ITALIC, 12));
-        guestLabel.setForeground(ACCENT_GREY);
-        guestLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        return guestLabel;
     }
 
     private static JButton createLoginButton(JFrame loginFrame, JTextField usernameField, JPasswordField passwordField, ApplicationContext ctx) {

@@ -214,8 +214,8 @@ public class Main {
         content.setBackground(HEADER_DARK);
         content.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        content.add(createSidebarButton("Attendance Management", e ->
-            AttendanceScreen.INSTANCE.show(mainFrame, userId, role, group, ctx)));
+        content.add(createSidebarButton("<html><center>Attendance<br>Management</center></html>", e ->
+            AttendanceScreen.INSTANCE.show(mainFrame, userId, role, group, ctx), 48));
         content.add(Box.createVerticalStrut(6));
         content.add(createSidebarButton("Employee Profile", e ->
             EmployeeProfile.INSTANCE.show(mainFrame, userId, role, group, ctx)));
@@ -250,8 +250,8 @@ public class Main {
         content.setBackground(HEADER_DARK);
         content.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        content.add(createSidebarButton("Attendance Management", e ->
-            AttendanceScreen.INSTANCE.show(mainFrame, userId, role, group, ctx)));
+        content.add(createSidebarButton("<html><center>Attendance<br>Management</center></html>", e ->
+            AttendanceScreen.INSTANCE.show(mainFrame, userId, role, group, ctx), 48));
         content.add(Box.createVerticalStrut(6));
         content.add(createSidebarButton("<html><center>Employee Profile &<br>Payroll Management</center></html>", e ->
             EmployeeProfile.INSTANCE.show(mainFrame, userId, role, group, ctx), 48));
@@ -287,7 +287,7 @@ public class Main {
         logoPanel.add(logoLabel);
         centerContent.add(logoPanel, BorderLayout.NORTH);
 
-        JLabel copyrightLabel = new JLabel("© 2026 GEAR.HR - All rights reserved");
+        JLabel copyrightLabel = new JLabel("© Year 2026 GEAR.HR - All rights reserved");
         copyrightLabel.setFont(new Font("Garet", Font.PLAIN, 12));
         copyrightLabel.setForeground(TEXT_WHITE);
         copyrightLabel.setHorizontalAlignment(SwingConstants.CENTER);
