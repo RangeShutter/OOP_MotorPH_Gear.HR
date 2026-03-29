@@ -1,6 +1,7 @@
 package ui;
 
 import model.Employee;
+import service.AuthContext;
 import service.ApplicationContext;
 
 import javax.swing.*;
@@ -12,6 +13,7 @@ import java.awt.geom.RoundRectangle2D;
 
 /**
  * User class handles login UI; authentication delegated to AuthenticationService (OOP redesign).
+ * [ABSTRACTION] Delegates authentication to {@link service.IAuthenticationService} via {@link ApplicationContext}.
  */
 public class User {
 
@@ -60,6 +62,7 @@ public class User {
 
     private static JPanel createLeftPanel() {
         JPanel leftPanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw gradient background. */
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -143,8 +146,13 @@ public class User {
         constraints.insets = new Insets(10, 0, 10, 0);
         constraints.gridy++;
         constraints.gridwidth = 2;
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        actionPanel.setOpaque(false);
         JButton loginButton = createLoginButton(loginFrame, usernameField, passwordField, ctx);
-        rightPanel.add(loginButton, constraints);
+        JButton forgetPasswordButton = createForgetPasswordButton(loginFrame, ctx);
+        actionPanel.add(loginButton);
+        actionPanel.add(forgetPasswordButton);
+        rightPanel.add(actionPanel, constraints);
         return rightPanel;
     }
 
@@ -198,14 +206,21 @@ public class User {
         return loginButton;
     }
 
+    private static JButton createForgetPasswordButton(JFrame loginFrame, ApplicationContext ctx) {
+        JButton button = createStyledButton("Forget Password", ACCENT_GREY, TEXT_WHITE);
+        button.setPreferredSize(new Dimension(160, 36));
+        button.addActionListener(e -> showSendTicketDialog(loginFrame, ctx));
+        return button;
+    }
+
     private static void authenticateUser(JFrame loginFrame, JTextField usernameField, JPasswordField passwordField, ApplicationContext ctx) {
         String userId = usernameField.getText().trim();
         String password = new String(passwordField.getPassword()).trim();
         Employee authenticated = ctx.getAuthenticationService().authenticate(userId, password);
         if (authenticated != null) {
-            String[] roleAndEmail = ctx.getAuthenticationService().getRoleAndEmail(userId);
+            AuthContext authContext = ctx.getAuthenticationService().getAuthContext(userId);
             loginFrame.dispose();
-            Main.showMainScreen(userId, roleAndEmail[0], roleAndEmail[1], ctx);
+            Main.showMainScreen(userId, authContext.getRole(), authContext.getEmail(), ctx);
         } else {
             JOptionPane.showMessageDialog(loginFrame,
                 "Invalid credentials! Please check your User ID and Password.",
@@ -214,8 +229,41 @@ public class User {
         }
     }
 
+    private static void showSendTicketDialog(JFrame parentFrame, ApplicationContext ctx) {
+        JTextField userIdField = createTextField();
+        JComboBox<String> requestTypeCombo = new JComboBox<>(new String[]{"Forgot Password"});
+
+        JPanel form = new JPanel(new GridLayout(0, 1, 6, 6));
+        form.add(new JLabel("UserID Requestor"));
+        form.add(userIdField);
+        form.add(new JLabel("Type of Request"));
+        form.add(requestTypeCombo);
+
+        int result = JOptionPane.showConfirmDialog(
+            parentFrame,
+            form,
+            "Sending ticket",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String error = ctx.getItTicketService().createTicket(
+            userIdField.getText().trim(),
+            String.valueOf(requestTypeCombo.getSelectedItem())
+        );
+        if (error != null) {
+            JOptionPane.showMessageDialog(parentFrame, error, "Ticket Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JOptionPane.showMessageDialog(parentFrame, "Ticket submitted successfully with Pending status.");
+    }
+
     private static JButton createStyledButton(String text, Color backgroundColor, Color foregroundColor) {
         JButton button = new JButton(text) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent for custom rounded button appearance. */
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();

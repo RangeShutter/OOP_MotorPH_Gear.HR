@@ -18,9 +18,6 @@ import java.time.format.DateTimeParseException;
 import java.awt.event.ItemEvent;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-// #region agent log
-import java.io.FileWriter;
-// #endregion
 
 /**
  * Attendance UI screen; services injected (DI). Named AttendanceScreen to avoid confusion with domain/service.
@@ -30,12 +27,12 @@ import java.io.FileWriter;
 public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
 
     /** [POLYMORPHISM] Single instance used when opening this screen via ModuleScreen. */
-    public static final ModuleScreen INSTANCE = new AttendanceScreen();
+    public static final AttendanceScreen INSTANCE = new AttendanceScreen();
 
-    private static IAttendanceService attendanceService;
-    private static IEmployeeService employeeService;
-    private static RoleGroup roleGroup;
-    private static String currentUserId;
+    private IAttendanceService attendanceService;
+    private IEmployeeService employeeService;
+    private RoleGroup roleGroup;
+    private String currentUserId;
 
     private static JTable attendanceTable;
     private static DefaultTableModel tableModel;
@@ -53,10 +50,10 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
     /** [INTERFACE] Implements ModuleScreen.show; obtains services from ctx and builds UI. */
     @Override
     public void show(JFrame parentFrame, String userId, String role, RoleGroup group, ApplicationContext ctx) {
-        attendanceService = ctx.getAttendanceService();
-        employeeService = ctx.getEmployeeService();
-        roleGroup = group != null ? group : RoleGroup.NORMAL;
-        currentUserId = userId;
+        this.attendanceService = ctx.getAttendanceService();
+        this.employeeService = ctx.getEmployeeService();
+        this.roleGroup = group != null ? group : RoleGroup.NORMAL;
+        this.currentUserId = userId;
         JFrame attendanceFrame = createFrame(parentFrame, "Attendance Management System", 1200, 1000);
         JPanel mainPanel = createMainPanel();
         mainPanel.add(createHeaderPanel(), BorderLayout.NORTH);
@@ -71,10 +68,10 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
     /** Legacy entry point; callers should use ModuleScreen.show instead. */
     public static void showAttendanceScreen(JFrame parentFrame, String userId, String role, RoleGroup group,
                                             IAttendanceService attSvc, IEmployeeService empSvc) {
-        attendanceService = attSvc;
-        employeeService = empSvc;
-        roleGroup = group != null ? group : RoleGroup.NORMAL;
-        currentUserId = userId;
+        INSTANCE.attendanceService = attSvc;
+        INSTANCE.employeeService = empSvc;
+        INSTANCE.roleGroup = group != null ? group : RoleGroup.NORMAL;
+        INSTANCE.currentUserId = userId;
         JFrame attendanceFrame = createFrame(parentFrame, "Attendance Management System", 1200, 1000);
         JPanel mainPanel = createMainPanel();
         mainPanel.add(createHeaderPanel(), BorderLayout.NORTH);
@@ -127,7 +124,7 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         JPanel contentPanel = new JPanel(new BorderLayout());
         contentPanel.setBackground(BACKGROUND_WHITE);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        if (roleGroup != RoleGroup.PAYROLL) {
+        if (INSTANCE.roleGroup != RoleGroup.PAYROLL) {
             contentPanel.add(createInputPanel(attendanceFrame), BorderLayout.NORTH);
         }
         JPanel tablePanel = createTablePanel();
@@ -171,14 +168,14 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         statusComboBox = createStatusComboBox();
         timeInField = createTimeField("08:00");
         timeOutField = createTimeField("17:00");
-        if (roleGroup == RoleGroup.NORMAL) {
+        if (INSTANCE.roleGroup == RoleGroup.NORMAL) {
             List<String> selfOnly = new ArrayList<>();
-            if (employeeService != null) {
-                Employee self = employeeService.getAllEmployees().stream()
-                    .filter(emp -> currentUserId.equals(emp.getEmployeeNumber())).findFirst().orElse(null);
-                selfOnly.add(self != null ? currentUserId + " - " + self.getFirstName() + " " + self.getLastName() : currentUserId);
+            if (INSTANCE.employeeService != null) {
+                Employee self = INSTANCE.employeeService.getAllEmployees().stream()
+                    .filter(emp -> INSTANCE.currentUserId.equals(emp.getEmployeeNumber())).findFirst().orElse(null);
+                selfOnly.add(self != null ? INSTANCE.currentUserId + " - " + self.getFirstName() + " " + self.getLastName() : INSTANCE.currentUserId);
             } else {
-                selfOnly.add(currentUserId);
+                selfOnly.add(INSTANCE.currentUserId);
             }
             employeeComboBox.setModel(new DefaultComboBoxModel<>(selfOnly.toArray(new String[0])));
             employeeComboBox.setEnabled(false);
@@ -259,13 +256,16 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         buttonPanel.setOpaque(false);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 0, 0, 0));
         JButton recordButton = createStyledButton("Record Attendance", BUTTON_ORANGE);
+        JButton deleteButton = createStyledButton("Delete", ACCENT_GREY);
         JButton clearButton = createStyledButton("Clear", ACCENT_GREY);
         JButton refreshButton = createStyledButton("Refresh", ACCENT_GREY);
         recordButton.addActionListener(e -> handleRecordAttendance(attendanceFrame));
+        deleteButton.addActionListener(e -> handleDeleteAttendanceRecord(attendanceFrame));
         clearButton.addActionListener(e -> handleClearAllRecords(attendanceFrame));
         refreshButton.addActionListener(e -> handleRefreshData(attendanceFrame));
         buttonPanel.add(recordButton);
-        if (roleGroup == RoleGroup.HR || roleGroup == RoleGroup.IT_ADMIN) {
+        if (INSTANCE.roleGroup == RoleGroup.HR || INSTANCE.roleGroup == RoleGroup.IT_ADMIN) {
+            buttonPanel.add(deleteButton);
             buttonPanel.add(clearButton);
         }
         buttonPanel.add(refreshButton);
@@ -298,6 +298,7 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
     private static void createAttendanceTable() {
         String[] columnNames = {"Employee ID", "Date", "Status", "Time In", "Time Out", "Hours Worked"};
         tableModel = new DefaultTableModel(columnNames, 0) {
+            /** [INHERITANCE] Overrides DefaultTableModel.isCellEditable to make rows read-only. */
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
@@ -322,6 +323,7 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
 
     private static JButton createStyledButton(String text, Color backgroundColor) {
         JButton button = new JButton(text) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent for custom rounded button appearance. */
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -363,29 +365,30 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         List<String> options = new ArrayList<>();
         options.add("Select Employee");
         try {
-            if (employeeService != null) {
-                List<Employee> employees = employeeService.getAllEmployees();
+            if (INSTANCE.employeeService != null) {
+                List<Employee> employees = INSTANCE.employeeService.getAllEmployees();
                 options.addAll(employees.stream()
                 .map(emp -> emp.getEmployeeNumber() + " - " + emp.getFirstName() + " " + emp.getLastName())
                 .collect(Collectors.toList()));
             }
         } catch (Exception e) {
-            options.add("1001 - Colin Bactong");
-            options.add("1002 - Charlize Bactong");
-            options.add("1003 - Angelica");
+            options.add("10035 - Colin Bactong");
+            options.add("10036 - Charlize Bactong");
+            options.add("10037 - Angelica");
         }
         return options;
     }
 
     private static void updateAttendanceTable() {
         tableModel.setRowCount(0);
-        List<AttendanceRecord> records = roleGroup == RoleGroup.NORMAL && currentUserId != null
-            ? attendanceService.getAllRecords().stream().filter(r -> currentUserId.equals(r.getEmployeeId())).collect(Collectors.toList())
-            : attendanceService.getAllRecords();
+        List<AttendanceRecord> records = INSTANCE.roleGroup == RoleGroup.NORMAL && INSTANCE.currentUserId != null
+            ? INSTANCE.attendanceService.getAllRecords().stream().filter(r -> INSTANCE.currentUserId.equals(r.getEmployeeId())).collect(Collectors.toList())
+            : INSTANCE.attendanceService.getAllRecords();
         for (AttendanceRecord record : records) {
+            String hoursWorked = record.getHoursWorked();
             tableModel.addRow(new Object[]{
                 record.getEmployeeId(), record.getDate(), record.getStatus(),
-                record.getTimeIn(), record.getTimeOut(), record.getHoursWorked()
+                record.getTimeIn(), record.getTimeOut(), hoursWorked
             });
         }
     }
@@ -410,19 +413,9 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         if (timeStr == null || timeStr.isEmpty()) return -1;
         timeStr = timeStr.trim();
         boolean matches = TIME_PATTERN.matcher(timeStr).matches();
-        // #region agent log
-        try (FileWriter fw = new FileWriter("debug-5a2820.log", true)) {
-            fw.write("{\"sessionId\":\"5a2820\",\"location\":\"AttendanceScreen.parseTimeToMinutes\",\"message\":\"parseTime\",\"data\":{\"timeStr\":\"" + (timeStr != null ? timeStr.replace("\\","\\\\").replace("\"","'") : "null") + "\",\"patternMatches\":" + matches + "},\"timestamp\":" + System.currentTimeMillis() + ",\"hypothesisId\":\"H1\"}\n");
-        } catch (Exception e) {}
-        // #endregion
         if (!matches) return -1;
         String[] parts = timeStr.split(":");
         int result = Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);
-        // #region agent log
-        try (FileWriter fw = new FileWriter("debug-5a2820.log", true)) {
-            fw.write("{\"sessionId\":\"5a2820\",\"location\":\"AttendanceScreen.parseTimeToMinutes\",\"message\":\"parseResult\",\"data\":{\"result\":" + result + "},\"timestamp\":" + System.currentTimeMillis() + ",\"hypothesisId\":\"H5\"}\n");
-        } catch (Exception e) {}
-        // #endregion
         return result;
     }
 
@@ -432,13 +425,6 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         String status = (String) statusComboBox.getSelectedItem();
         String timeIn = timeInField.getText().trim();
         String timeOut = timeOutField.getText().trim();
-        // #region agent log
-        try (FileWriter fw = new FileWriter("debug-5a2820.log", true)) {
-            String rawIn = timeInField.getText();
-            String rawOut = timeOutField.getText();
-            fw.write("{\"sessionId\":\"5a2820\",\"location\":\"AttendanceScreen.handleRecordAttendance\",\"message\":\"timeFields\",\"data\":{\"timeIn\":\"" + (timeIn != null ? timeIn.replace("\\","\\\\").replace("\"","'") : "null") + "\",\"timeOut\":\"" + (timeOut != null ? timeOut.replace("\\","\\\\").replace("\"","'") : "null") + "\",\"timeInLen\":" + (timeIn != null ? timeIn.length() : 0) + ",\"timeOutLen\":" + (timeOut != null ? timeOut.length() : 0) + ",\"rawInLen\":" + (rawIn != null ? rawIn.length() : 0) + ",\"rawOutLen\":" + (rawOut != null ? rawOut.length() : 0) + "},\"timestamp\":" + System.currentTimeMillis() + ",\"hypothesisId\":\"H2\"}\n");
-        } catch (Exception e) {}
-        // #endregion
 
         if (employeeSelection == null || employeeSelection.equals("Select Employee")) {
             JOptionPane.showMessageDialog(attendanceFrame,
@@ -474,11 +460,6 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
             }
             int inMinutes = parseTimeToMinutes(timeIn);
             int outMinutes = parseTimeToMinutes(timeOut);
-            // #region agent log
-            try (FileWriter fw = new FileWriter("debug-5a2820.log", true)) {
-                fw.write("{\"sessionId\":\"5a2820\",\"location\":\"AttendanceScreen.handleRecordAttendance\",\"message\":\"minutes\",\"data\":{\"inMinutes\":" + inMinutes + ",\"outMinutes\":" + outMinutes + "},\"timestamp\":" + System.currentTimeMillis() + ",\"hypothesisId\":\"H3\"}\n");
-            } catch (Exception e) {}
-            // #endregion
             if (inMinutes < 0 || outMinutes < 0) {
                 JOptionPane.showMessageDialog(attendanceFrame,
                     "Invalid time format. Use Hour:Minute in 24-hour format (e.g. 08:00, 17:30).",
@@ -494,7 +475,7 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
         }
 
         String employeeId = employeeSelection.split(" - ")[0];
-        if (attendanceService.hasRecord(employeeId, date)) {
+        if (INSTANCE.attendanceService.hasRecord(employeeId, date)) {
             JOptionPane.showMessageDialog(attendanceFrame,
                 "Attendance for this employee on this date already exists. Edit or delete the existing record first.",
                 "Duplicate Entry", JOptionPane.ERROR_MESSAGE);
@@ -508,7 +489,7 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
                 "Validation Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        attendanceService.addRecord(record);
+        INSTANCE.attendanceService.addRecord(record);
         updateAttendanceTable();
         JOptionPane.showMessageDialog(attendanceFrame, "Attendance recorded successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
         employeeComboBox.setSelectedIndex(0);
@@ -525,19 +506,51 @@ public class AttendanceScreen extends BaseModuleScreen implements ModuleScreen {
             "Are you sure you want to clear ALL attendance records? This cannot be undone.",
             "Confirm Clear All", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
-            attendanceService.clearAll();
+            INSTANCE.attendanceService.clearAll();
             updateAttendanceTable();
             JOptionPane.showMessageDialog(attendanceFrame, "All attendance records have been cleared.", "Records Cleared", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
+    private static void handleDeleteAttendanceRecord(JFrame attendanceFrame) {
+        if (INSTANCE.roleGroup != RoleGroup.HR && INSTANCE.roleGroup != RoleGroup.IT_ADMIN) {
+            JOptionPane.showMessageDialog(attendanceFrame,
+                "Only HR and IT/Admin can delete attendance records.",
+                "Access Denied", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int selectedRow = attendanceTable.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(attendanceFrame,
+                "Please select an attendance record in the table to delete.",
+                "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String employeeId = String.valueOf(tableModel.getValueAt(selectedRow, 0));
+        String date = String.valueOf(tableModel.getValueAt(selectedRow, 1));
+        int confirm = JOptionPane.showConfirmDialog(attendanceFrame,
+            "Delete attendance record for employee " + employeeId + " on " + date + "?",
+            "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        INSTANCE.attendanceService.removeRecord(employeeId, date);
+        updateAttendanceTable();
+        JOptionPane.showMessageDialog(attendanceFrame,
+            "Attendance record deleted successfully.",
+            "Delete Complete", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private static void handleRefreshData(JFrame attendanceFrame) {
-        attendanceService.loadAttendanceRecordsFromCSV();
+        INSTANCE.attendanceService.loadAttendanceRecordsFromCSV();
         updateAttendanceTable();
         JOptionPane.showMessageDialog(attendanceFrame, "Data refreshed successfully", "Refresh Complete", JOptionPane.INFORMATION_MESSAGE);
     }
 
     public static void removeAttendanceRecords(String employeeId) {
-        attendanceService.removeAttendanceRecords(employeeId);
+        INSTANCE.attendanceService.removeAttendanceRecords(employeeId);
     }
 }

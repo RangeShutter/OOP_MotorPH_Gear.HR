@@ -22,6 +22,7 @@ public abstract class AbstractEntity implements Identifiable, Validatable {
      * [INTERFACE] Returns the unique identifier (Implements Identifiable.getId).
      */
     @Override
+    /** [ENCAPSULATION] Canonical immutable identity for all subclasses. */
     public String getId() {
         return entityId;
     }

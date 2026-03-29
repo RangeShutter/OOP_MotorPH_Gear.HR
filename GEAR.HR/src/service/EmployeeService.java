@@ -14,13 +14,14 @@ import java.util.List;
 public class EmployeeService implements IEmployeeService {
     /** [POLYMORPHISM] Holds any implementation of IEmployeeRepository. */
     private final IEmployeeRepository repository;
+    private final IUserCredentialService userCredentialService;
     private final List<Employee> employees = new ArrayList<>();
 
-    public EmployeeService(IEmployeeRepository repository) {
+    public EmployeeService(IEmployeeRepository repository, IUserCredentialService userCredentialService) {
         this.repository = repository;
+        this.userCredentialService = userCredentialService;
         List<Employee> loaded = repository.load();
         employees.addAll(loaded);
-    
     }
 
     /** [INTERFACE] Implements IEmployeeService.loadEmployeesFromCSV. */
@@ -128,19 +129,27 @@ public class EmployeeService implements IEmployeeService {
 
     /** [INTERFACE] Implements IEmployeeService.addEmployee. Rejects invalid entities (Validatable.isValid). */
     @Override
-    public void addEmployee(Employee emp) {
-        if (emp == null || !emp.isValid()) return;
-        if (findEmployeeById(emp.getEmployeeNumber()) != null) return;
+    public String addEmployee(Employee emp) {
+        if (emp == null || !emp.isValid()) return null;
+        if (findEmployeeById(emp.getEmployeeNumber()) != null) return null;
         employees.add(emp);
         saveEmployeesToCSV();
+        String credentialError = userCredentialService.upsertCredentialForNewEmployee(
+                emp.getEmployeeNumber(), emp.getEmail(), emp.getPosition());
+        if (credentialError != null) {
+            employees.removeIf(e -> emp.getEmployeeNumber().equals(e.getEmployeeNumber()));
+            saveEmployeesToCSV();
+            return credentialError;
+        }
+        return null;
     }
 
     /** [INTERFACE] Implements IEmployeeService.updateEmployee. Rejects updates that would leave the entity invalid. */
     @Override
-    public void updateEmployee(Employee emp) {
-        if (emp == null) return;
+    public String updateEmployee(Employee emp) {
+        if (emp == null) return null;
         Employee existing = findEmployeeById(emp.getEmployeeNumber());
-        if (existing == null) return;
+        if (existing == null) return null;
         existing.setLastName(emp.getLastName());
         existing.setFirstName(emp.getFirstName());
         existing.setSssNumber(emp.getSssNumber());
@@ -149,10 +158,13 @@ public class EmployeeService implements IEmployeeService {
         existing.setPagIbigNumber(emp.getPagIbigNumber());
         existing.setEmail(emp.getEmail());
         existing.setPosition(emp.getPosition());
+        existing.setStatus(emp.getStatus());
         existing.setAddress(emp.getAddress());
         existing.setPhone(emp.getPhone());
-        if (!existing.isValid()) return;
+        if (!existing.isValid()) return null;
         saveEmployeesToCSV();
+        return userCredentialService.patchCredentialFromEmployee(
+                existing.getEmployeeNumber(), existing.getEmail(), existing.getPosition());
     }
 
     /** [INTERFACE] Implements IEmployeeService.deleteEmployee. */
@@ -160,5 +172,6 @@ public class EmployeeService implements IEmployeeService {
     public void deleteEmployee(String empNumber) {
         employees.removeIf(e -> empNumber != null && empNumber.equals(e.getEmployeeNumber()));
         saveEmployeesToCSV();
+        userCredentialService.deleteCredentialByUserId(empNumber);
     }
 }

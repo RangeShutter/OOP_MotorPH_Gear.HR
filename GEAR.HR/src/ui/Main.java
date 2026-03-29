@@ -8,7 +8,7 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 
 /**
- * Main class for the Employee Management System. Central dashboard with navigation to modules.
+ * Main class for the Employee Management System. Central dashboard witnih navigation to modules.
  * [POLYMORPHISM] Opens module screens via ModuleScreen interface so any screen can be shown uniformly.
  */
 public class Main {
@@ -107,10 +107,7 @@ public class Main {
                 sidebar.add(createSidebarButton("My Attendance", e ->
                     AttendanceScreen.INSTANCE.show(mainFrame, userId, role, group, ctx)));
                 sidebar.add(Box.createVerticalStrut(8));
-                sidebar.add(createSidebarButton("My Profile", e ->
-                    EmployeeProfile.INSTANCE.show(mainFrame, userId, role, group, ctx)));
-                sidebar.add(Box.createVerticalStrut(8));
-                sidebar.add(createSidebarButton("My Payroll", e ->
+                sidebar.add(createSidebarButton("My Profile & Payroll", e ->
                     EmployeeProfile.INSTANCE.show(mainFrame, userId, role, group, ctx)));
                 sidebar.add(Box.createVerticalStrut(8));
                 sidebar.add(createSidebarButton("My Leave", e ->
@@ -129,6 +126,7 @@ public class Main {
 
     private static JButton createSidebarButton(String text, ActionListener action, int height) {
         JButton btn = new JButton(text) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent for custom sidebar button rendering. */
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -196,10 +194,7 @@ public class Main {
         content.add(createSidebarButton("My Attendance", e ->
             AttendanceScreen.INSTANCE.show(mainFrame, userId, role, RoleGroup.NORMAL, ctx)));
         content.add(Box.createVerticalStrut(6));
-        content.add(createSidebarButton("My Profile", e ->
-            EmployeeProfile.INSTANCE.show(mainFrame, userId, role, RoleGroup.NORMAL, ctx)));
-        content.add(Box.createVerticalStrut(6));
-        content.add(createSidebarButton("My Payroll", e ->
+        content.add(createSidebarButton("My Profile & Payroll", e ->
             EmployeeProfile.INSTANCE.show(mainFrame, userId, role, RoleGroup.NORMAL, ctx)));
         content.add(Box.createVerticalStrut(6));
         content.add(createSidebarButton("My Leave", e ->
@@ -258,12 +253,16 @@ public class Main {
         content.add(Box.createVerticalStrut(6));
         content.add(createSidebarButton("Leave Management", e ->
             LeaveManagementScreen.INSTANCE.show(mainFrame, userId, role, group, ctx)));
+        content.add(Box.createVerticalStrut(6));
+        content.add(createSidebarButton("<html><center>User Credential<br>Management</center></html>", e ->
+            UserCredentialManagementScreen.INSTANCE.show(mainFrame, userId, role, group, ctx), 48));
 
         return createCollapsibleSection("Directives", false, content);
     }
 
     private static JPanel createContentPanel(JFrame mainFrame, String userId, String role, String email, ApplicationContext ctx) {
         JPanel contentPanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw dashboard gradient background. */
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -317,6 +316,9 @@ public class Main {
         }
     }
 
+    /**
+     * [ABSTRACTION] Application entry point: builds {@link ApplicationContext} (composition root / DI) then shows login after splash.
+     */
     public static void main(String[] args) {
         ApplicationContext ctx = new ApplicationContext();
         SplashScreen.showSplash(() -> User.showLoginScreen(null, ctx));

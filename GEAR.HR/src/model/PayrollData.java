@@ -1,5 +1,7 @@
 package model;
 
+import util.PayrollUtils;
+
 /**
  * Domain model for payroll data per employee (OOP redesign - GEAR.HR).
  * [INTERFACE] Implements Validatable only (no in-object id; does not extend AbstractEntity).
@@ -8,6 +10,7 @@ package model;
  */
 public class PayrollData implements Validatable {
     private final double baseSalary;
+    private final double hourlyRate;
     private final double sssAmount;
     private final double philHealthAmount;
     private final double pagIbigAmount;
@@ -16,10 +19,11 @@ public class PayrollData implements Validatable {
     private final float phoneAllowance;
     private final float clothingAllowance;
 
-    public PayrollData(double baseSalary,
+    public PayrollData(double baseSalary, double hourlyRate,
                        double sssAmount, double philHealthAmount, double pagIbigAmount, float withholdingTax,
                        float riceSubsidy, float phoneAllowance, float clothingAllowance) {
         this.baseSalary = baseSalary;
+        this.hourlyRate = hourlyRate;
         this.sssAmount = sssAmount;
         this.philHealthAmount = philHealthAmount;
         this.pagIbigAmount = pagIbigAmount;
@@ -30,6 +34,7 @@ public class PayrollData implements Validatable {
     }
 
     public double getBaseSalary() { return baseSalary; }
+    public double getHourlyRate() { return hourlyRate; }
     public double getSssAmount() { return sssAmount; }
     public double getPhilHealthAmount() { return philHealthAmount; }
     public double getPagIbigAmount() { return pagIbigAmount; }
@@ -48,8 +53,24 @@ public class PayrollData implements Validatable {
     public double calculateTotalAllowances() {
         return riceSubsidy + phoneAllowance + clothingAllowance;
     }
+    /**
+     * Estimated net for reference hours only; base salary is informational and does not drive this calculation.
+     */
     public double calculateNetSalary() {
-        return baseSalary - calculateTotalDeductions() + calculateTotalAllowances();
+        return calculateNetSalaryForHours(PayrollUtils.REFERENCE_PAYROLL_HOURS);
+    }
+
+    public double calculateGrossPay(double workedHours) {
+        return Math.max(0, hourlyRate) * Math.max(0, workedHours);
+    }
+
+    /** Monthly gross estimate using {@link PayrollUtils#REFERENCE_PAYROLL_HOURS} (for UI snapshots only). */
+    public double calculateReferenceMonthlyGross() {
+        return calculateGrossPay(PayrollUtils.REFERENCE_PAYROLL_HOURS);
+    }
+
+    public double calculateNetSalaryForHours(double workedHours) {
+        return calculateGrossPay(workedHours) - calculateTotalDeductions() + calculateTotalAllowances();
     }
 
     /** [POLYMORPHISM - Overloading] Same method name, different parameter: subtracts additional deduction from net. */
@@ -60,7 +81,7 @@ public class PayrollData implements Validatable {
     /** [INTERFACE] Implements Validatable.isValid (no inheritance; implements interface only). */
     @Override
     public boolean isValid() {
-        return baseSalary >= 0 && sssAmount >= 0 && philHealthAmount >= 0 && pagIbigAmount >= 0 && withholdingTax >= 0
+        return baseSalary >= 0 && hourlyRate >= 0 && sssAmount >= 0 && philHealthAmount >= 0 && pagIbigAmount >= 0 && withholdingTax >= 0
                 && riceSubsidy >= 0 && phoneAllowance >= 0 && clothingAllowance >= 0;
     }
 }

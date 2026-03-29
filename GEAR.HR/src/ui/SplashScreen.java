@@ -5,6 +5,7 @@ import java.awt.*;
 
 /**
  * SplashScreen provides an animated loading screen before the main application loads.
+ * [ABSTRACTION] Bootstrap UI only; no domain or service dependencies.
  */
 public class SplashScreen {
     private static final int SPLASH_WIDTH = 500;
@@ -35,6 +36,7 @@ public class SplashScreen {
 
     private static JPanel createMainPanel() {
         JPanel mainPanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw splash gradient background. */
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);

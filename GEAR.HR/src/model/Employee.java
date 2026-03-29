@@ -19,6 +19,7 @@ public class Employee extends AbstractEntity {
     private String pagIbigNumber;
     private String email;
     private String position;
+    private String status;
     private String address;
     private String phone;
     private double hourlyRate; // optional; used when computed from base salary
@@ -26,7 +27,7 @@ public class Employee extends AbstractEntity {
     /** [INHERITANCE] Calls super(id) to set AbstractEntity.entityId. */
     public Employee(String employeeNumber, String lastName, String firstName, String sssNumber,
                     String philHealthNumber, String tin, String pagIbigNumber, String email,
-                    String position, String address, String phone) {
+                    String position, String status, String address, String phone) {
         super(employeeNumber != null ? employeeNumber.trim() : "");
         this.employeeNumber = employeeNumber != null ? employeeNumber.trim() : "";
         this.lastName = lastName != null ? lastName : "";
@@ -37,13 +38,14 @@ public class Employee extends AbstractEntity {
         this.pagIbigNumber = pagIbigNumber != null ? pagIbigNumber : "";
         this.email = email != null ? email : "";
         this.position = position != null ? position : "";
+        this.status = status != null ? status : "";
         this.address = address != null ? address : "";
         this.phone = phone != null ? phone : "";
         this.hourlyRate = 0;
     }
 
-    /** Identity field; set only in constructor to keep entity stable. */
-    public String getEmployeeNumber() { return employeeNumber; }
+    /** [ENCAPSULATION] Canonical employee identity delegated to AbstractEntity#getId(). */
+    public String getEmployeeNumber() { return getId(); }
 
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName != null ? lastName : this.lastName; }
@@ -68,6 +70,9 @@ public class Employee extends AbstractEntity {
 
     public String getPosition() { return position; }
     public void setPosition(String position) { this.position = position != null ? position : this.position; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status != null ? status : this.status; }
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address != null ? address : this.address; }

@@ -1,89 +1,86 @@
 # GEAR.HR
 
-**Important:** In this repository, **`GEAR.HR` is the project root folder**. Open/run the project from the `GEAR.HR/` directory (not from `OOP_MotorPH_Gear.HR/`) so relative paths like `csv/...` resolve correctly.
+**Important:** In this repository, **`GEAR.HR` is the project root folder**. Open/run the project from the `GEAR.HR/` directory (not from a parent folder) so relative paths like `csv/...` and `Logo/...` resolve correctly.
 
-GEAR.HR is a simple desktop HR system built in Java Swing for managing **Employees**, **Attendance**, **Leave Requests**, and **Payroll**.  
-It loads and saves data using CSV files under the `csv/` folder and shows different modules depending on the user’s role.
+GEAR.HR is a desktop HR system built in **Java Swing** for managing **employees**, **attendance**, **leave requests**, and **payroll**.  
+It loads and saves data from CSV files under `csv/` and shows different navigation and permissions based on the user’s role (`RoleGroup`).
 
 ## How to run
 
-- Main entry point: `src/ui/Main.java`  
-  Running `Main` shows a splash screen, then opens the Login screen.
+- Main entry point: [`src/ui/Main.java`](src/ui/Main.java)  
+- Run `Main`: splash screen → login.
 
 ## Data files (CSV)
 
-These are the main CSV files used by the app:
+| File | Purpose |
+|------|---------|
+| `csv/user_credentials.csv` | Login: userId, password, role, email |
+| `csv/employees.csv` | Employee directory |
+| `csv/attendance_records.csv` | Attendance rows |
+| `csv/leave_requests.csv` | Leave requests |
+| `csv/payroll_records.csv` | Per-employee payroll (base salary, deductions, allowances) |
 
-- `csv/user_credentials.csv`: login credentials (userId, password, role, email)
-- `csv/employees.csv`: employee directory data
-- `csv/attendance_records.csv`: attendance records
-- `csv/leave_requests.csv`: leave requests
-- `csv/payroll_records.csv`: payroll records per employee
+If a CSV is missing, the app usually starts with empty data for that module.
 
-Note: If a CSV file is missing, the app typically loads an empty list/map and still opens.
+### Payroll CSV and `EmployeeData.md`
 
-## Role groups (Role-based access)
+- Seed payroll rows for MotorPH-style employees **10001–10034** are aligned with [`EmployeeData.md`](EmployeeData.md) (base salary and allowances); **SSS, PhilHealth, Pag-IBIG, and withholding tax** follow [`src/util/PayrollUtils.java`](src/util/PayrollUtils.java).
+- Employees **10035–10038** (in `employees.csv` but not in `EmployeeData.md`) have **no row** in `payroll_records.csv` until payroll is edited in the app (defaults apply in memory).
+- To **regenerate** `payroll_records.csv` from the same rules, compile and run [`src/tools/GeneratePayrollRecordsCsv.java`](src/tools/GeneratePayrollRecordsCsv.java) from the project root (see class Javadoc).
 
-GEAR.HR maps the **role string** from `csv/user_credentials.csv` into a role group using `RoleGroup.fromRole(role)` (`src/service/RoleGroup.java`).
+## Role groups
+
+Roles come from `csv/user_credentials.csv` and are mapped in [`src/service/RoleGroup.java`](src/service/RoleGroup.java).
 
 ### Role strings per group
 
-- **HR**
-  - `HR Manager`
-  - `HR Team Leader`
-  - `HR Rank and File`
+- **HR:** `HR Manager`, `HR Team Leader`, `HR Rank and File`
+- **Payroll:** `Payroll Manager`, `Payroll Team Leader`, `Payroll Rank and File`, `Account Team Leader`, `Account Rank and File`
+- **IT/Admin:** `IT`, `IT Operations and Systems`
+- **Normal employee:** any other role string
 
-- **Payroll**
-  - `Payroll Manager`
-  - `Payroll Team Leader`
-  - `Payroll Rank and File`
-  - `Account Team Leader`
-  - `Account Rank and File`
+### Sidebar / modules
 
-- **IT/Admin**
-  - `IT`
-  - `IT Operations and Systems`
+**Normal employee**
 
-- **Normal Employee**
-  - Any other role string not listed above
+- My Attendance  
+- **My Profile & Payroll** (opens profile + salary tabs and **Personal Payroll** read-only table)  
+- My Leave  
 
-### What each role can access (sidebar modules)
+**HR** (Personal Account collapsible + Directives)
 
-These menu options are shown from `src/ui/Main.java`:
+- Personal: My Attendance, My Profile & Payroll, My Leave  
+- Directives: Attendance Management, Employee Profile, Leave Management  
 
-- **Normal Employee**
-  - My Attendance
-  - My Profile
-  - My Payroll
-  - My Leave
+**Payroll**
 
-- **HR**
-  - Attendance Management
-  - Employee Profile
-  - Leave Management
+- Personal: same as above  
+- Directives: Payroll Management, View Attendance, View Leave Requests  
 
-- **Payroll**
-  - Payroll Management
-  - View Attendance
-  - View Leave Requests
+**IT/Admin**
 
-- **IT/Admin**
-  - Attendance Management
-  - Employee Profile & Payroll Management
-  - Leave Management
+- Personal: same as above  
+- Directives: Attendance Management, Employee Profile & Payroll Management, Leave Management  
 
-## Testing roles (external QA “work around”)
+## Feature notes
 
-If you need to test different role experiences without changing code, you can switch a user’s role in the credentials CSV.
+### Employee Profile / Payroll Management (`EmployeeProfile`)
 
-1. Open `csv/user_credentials.csv`
-2. Pick an existing row (userId)
-3. Change the **role** column to one of the role strings listed above (must match spelling exactly)
-4. Save the file
-5. Log out and log back in (or restart the app) using that userId
+- **HR, Payroll, IT/Admin:** two tabs — **Employee Directory** and **Employee Payroll Data** (table from employees + payroll CSV).
+- **Column sorting:** click a header to sort; one column at a time; numbers vs text handled by [`src/util/TableColumnSortUtil.java`](src/util/TableColumnSortUtil.java).
+- **Edit payroll (Employee Payroll Data tab + employee detail):**
+  - **IT/Admin** and **Payroll:** view and edit  
+  - **HR:** view only (no Edit Payroll on payroll tab; read-only employee detail for payroll footer)
+- **Normal employee:** outer tabs **My Profile** (personal info + salary computation) and **Personal Payroll** (read-only payroll row).
 
-### Important notes for testers
+### Attendance
 
-- The app uses **exact role strings** to map into HR/Payroll/IT/Admin; spelling/case should match what’s listed.
-- Login credentials are loaded by `src/service/AuthenticationService.java` from `csv/user_credentials.csv` (fallback: `user_credentials.csv` in project root if present).
+- **HR** and **IT/Admin:** **Delete** removes the **selected** attendance row (after confirm); **Clear** still clears all records (HR/IT only).  
+- **Payroll** and normal employees: no delete/clear all (as implemented in [`src/ui/AttendanceScreen.java`](src/ui/AttendanceScreen.java)).
 
+## Testing different roles
+
+1. Edit `csv/user_credentials.csv` — set **role** to an exact string from the lists above.  
+2. Save, restart app or log out/in with that userId.
+
+Login is loaded by [`src/service/AuthenticationService.java`](src/service/AuthenticationService.java) (with optional fallback if a root-level `user_credentials.csv` exists).

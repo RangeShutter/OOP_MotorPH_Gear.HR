@@ -15,7 +15,6 @@ public class LeaveRequest extends AbstractEntity {
 
     private static final String[] ALLOWED_STATUSES = { STATUS_PENDING, STATUS_APPROVED, STATUS_REJECTED };
 
-    private String employeeId;
     private LocalDate startDate;
     private LocalDate endDate;
     private String reason;
@@ -24,15 +23,22 @@ public class LeaveRequest extends AbstractEntity {
     /** [INHERITANCE] Calls super(employeeId) to set AbstractEntity.entityId. */
     public LeaveRequest(String employeeId, LocalDate startDate, LocalDate endDate, String reason, String status) {
         super(employeeId != null ? employeeId : "");
-        this.employeeId = employeeId != null ? employeeId : "";
         this.startDate = startDate;
         this.endDate = endDate;
         this.reason = reason != null ? reason : "";
         setStatus(status);
     }
 
-    public String getEmployeeId() { return employeeId; }
-    public void setEmployeeId(String employeeId) { this.employeeId = employeeId != null ? employeeId : this.employeeId; }
+    /** [ENCAPSULATION] Canonical employee identity delegated to AbstractEntity#getId(). */
+    public String getEmployeeId() { return getId(); }
+
+    /**
+     * [ENCAPSULATION] Prevents identity drift from AbstractEntity#getId().
+     * Setter accepts same value for compatibility and ignores conflicting values.
+     */
+    public void setEmployeeId(String employeeId) {
+        // Intentionally ignored to preserve canonical immutable identity in AbstractEntity.
+    }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }

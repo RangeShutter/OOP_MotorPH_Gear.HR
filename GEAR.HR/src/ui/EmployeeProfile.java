@@ -11,17 +11,17 @@ import service.PayrollReport;
 import service.RoleGroup;
 import util.EmployeeValidationUtil;
 import util.PayrollUtils;
+import util.TableColumnSortUtil;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.RoundRectangle2D;
-import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.Set;
+import java.util.Locale;
 import java.io.*;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.format.TextStyle;
 import javax.swing.table.*;
 
 /**
@@ -44,6 +44,18 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
     // UI components
     private static JTable employeeTable;
     private static DefaultTableModel tableModel;
+    private static JTable payrollDataTable;
+    private static DefaultTableModel payrollTableModel;
+    private static JTable personalPayrollTable;
+    private static DefaultTableModel personalPayrollTableModel;
+
+    /** Matches {@link java.time.Month#getDisplayName} FULL English for attendance / payroll month keys. */
+    private static final String[] CALENDAR_MONTH_NAMES = {
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    };
+
+    private static JComboBox<String> employeePayrollMonthCombo;
 
     /** [INTERFACE] Implements ModuleScreen.show; obtains services from ctx and builds UI. */
     @Override
@@ -129,6 +141,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
      */
     private static JPanel createHeaderPanel() {
         JPanel headerPanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw header gradient background. */
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -201,14 +214,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         if (roleGroup == RoleGroup.NORMAL) {
             Employee self = findEmployeeById(currentUserId);
             if (self != null) {
-                JPanel singlePanel = new JPanel(new BorderLayout());
-                singlePanel.setBackground(BACKGROUND_WHITE);
-                JLabel titleLabel = new JLabel("My Profile");
-                titleLabel.setFont(new Font("Garet", Font.BOLD, 18));
-                titleLabel.setForeground(TEXT_BLACK);
-                singlePanel.add(titleLabel, BorderLayout.NORTH);
-                singlePanel.add(createDetailsContentPanel(null, self, true), BorderLayout.CENTER);
-                contentPanel.add(singlePanel, BorderLayout.CENTER);
+                contentPanel.add(createPersonalTabsPanel(self), BorderLayout.CENTER);
             } else {
                 JLabel noData = new JLabel("Your profile could not be loaded.");
                 noData.setFont(new Font("Garet", Font.PLAIN, 14));
@@ -217,15 +223,31 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
             return contentPanel;
         }
 
-        // Create employee table panel
-        JPanel tablePanel = createTablePanel();
-        contentPanel.add(tablePanel, BorderLayout.CENTER);
-
-        // Create action button panel
-        JPanel buttonPanel = createButtonPanel(profileFrame, userId, role);
-        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
+        contentPanel.add(createManagementTabsPanel(profileFrame, userId, role), BorderLayout.CENTER);
 
         return contentPanel;
+    }
+
+    private static JTabbedPane createManagementTabsPanel(JFrame profileFrame, String userId, String role) {
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(new Font("Garet", Font.BOLD, 12));
+
+        JPanel employeeDirectoryTab = new JPanel(new BorderLayout());
+        employeeDirectoryTab.setBackground(BACKGROUND_WHITE);
+        employeeDirectoryTab.add(createTablePanel(), BorderLayout.CENTER);
+        employeeDirectoryTab.add(createButtonPanel(profileFrame, userId, role), BorderLayout.SOUTH);
+
+        tabbedPane.addTab("Employee Directory", employeeDirectoryTab);
+        tabbedPane.addTab("Employee Payroll Data", createEmployeePayrollDataTabPanel(profileFrame));
+        return tabbedPane;
+    }
+
+    private static JTabbedPane createPersonalTabsPanel(Employee self) {
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(new Font("Garet", Font.BOLD, 12));
+        tabbedPane.addTab("My Profile", createDetailsContentPanel(null, self, true));
+        tabbedPane.addTab("Personal Payroll", createPersonalPayrollPanel(self));
+        return tabbedPane;
     }
 
     /**
@@ -235,6 +257,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
      */
     private static JPanel createTablePanel() {
         JPanel tablePanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw rounded card around employee table. */
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -265,6 +288,126 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         return tablePanel;
     }
 
+    private static JPanel createEmployeePayrollDataTabPanel(JFrame parentFrame) {
+        JPanel tabPanel = new JPanel(new BorderLayout());
+        tabPanel.setBackground(BACKGROUND_WHITE);
+
+        JPanel tablePanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw rounded card around payroll data table. */
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int arc = 40;
+                g2d.setColor(CARD_WHITE);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+                g2d.setColor(BORDER_GREY);
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+                g2d.dispose();
+            }
+        };
+        tablePanel.setBackground(CARD_WHITE);
+        tablePanel.setOpaque(false);
+        tablePanel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
+
+        JLabel titleLabel = new JLabel("Employee Payroll Data");
+        titleLabel.setFont(new Font("Garet", Font.BOLD, 18));
+        titleLabel.setForeground(TEXT_BLACK);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+        employeePayrollMonthCombo = new JComboBox<>(CALENDAR_MONTH_NAMES);
+        employeePayrollMonthCombo.setFont(new Font("Garet", Font.PLAIN, 12));
+        employeePayrollMonthCombo.setPreferredSize(new Dimension(150, 30));
+        employeePayrollMonthCombo.setSelectedItem(
+            LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH));
+
+        JLabel payrollMonthLabel = new JLabel("Month:");
+        payrollMonthLabel.setFont(new Font("Garet", Font.BOLD, 14));
+        payrollMonthLabel.setForeground(TEXT_BLACK);
+
+        JPanel payrollToolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 8));
+        payrollToolbar.setOpaque(false);
+        payrollToolbar.add(payrollMonthLabel);
+        payrollToolbar.add(employeePayrollMonthCombo);
+
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setOpaque(false);
+        headerPanel.add(titleLabel, BorderLayout.NORTH);
+        headerPanel.add(payrollToolbar, BorderLayout.CENTER);
+
+        createPayrollDataTable();
+        employeePayrollMonthCombo.addActionListener(e -> updatePayrollDataTable());
+
+        tablePanel.add(headerPanel, BorderLayout.NORTH);
+        tablePanel.add(new JScrollPane(payrollDataTable), BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 15));
+        buttonPanel.setBackground(BACKGROUND_WHITE);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+
+        JButton viewPayrollEmployeeButton = createModernButton("View Employee", BUTTON_ORANGE);
+        viewPayrollEmployeeButton.addActionListener(e -> handleViewEmployeeFromPayrollTab(parentFrame));
+        buttonPanel.add(viewPayrollEmployeeButton);
+
+        if (roleGroup == RoleGroup.IT_ADMIN || roleGroup == RoleGroup.PAYROLL) {
+            JButton editPayrollButton = createModernButton("Edit Payroll", BUTTON_ORANGE);
+            editPayrollButton.addActionListener(e -> handleEditPayrollFromPayrollTab(parentFrame));
+            buttonPanel.add(editPayrollButton);
+        }
+
+        JButton refreshButton = createModernButton("Refresh", ACCENT_GREY);
+        refreshButton.addActionListener(e -> {
+            payrollProcessor.loadPayrollDataFromCSV();
+            updatePayrollDataTable();
+            showModernMessage(parentFrame, "Payroll data refreshed successfully", "Refresh Complete", JOptionPane.INFORMATION_MESSAGE);
+        });
+        buttonPanel.add(refreshButton);
+
+        tabPanel.add(tablePanel, BorderLayout.CENTER);
+        tabPanel.add(buttonPanel, BorderLayout.SOUTH);
+        return tabPanel;
+    }
+
+    private static JPanel createPersonalPayrollPanel(Employee self) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(BACKGROUND_WHITE);
+
+        JPanel tablePanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw rounded card around personal payroll table. */
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int arc = 40;
+                g2d.setColor(CARD_WHITE);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+                g2d.setColor(BORDER_GREY);
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+                g2d.dispose();
+            }
+        };
+        tablePanel.setBackground(CARD_WHITE);
+        tablePanel.setOpaque(false);
+        tablePanel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
+
+        JLabel titleLabel = new JLabel("Personal Payroll");
+        titleLabel.setFont(new Font("Garet", Font.BOLD, 18));
+        titleLabel.setForeground(TEXT_BLACK);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
+
+        createPersonalPayrollTable();
+        updatePersonalPayrollTable(self);
+
+        tablePanel.add(titleLabel, BorderLayout.NORTH);
+        tablePanel.add(new JScrollPane(personalPayrollTable), BorderLayout.CENTER);
+        panel.add(tablePanel, BorderLayout.CENTER);
+        return panel;
+    }
+
     /**
      * Creates the table title label.
      *
@@ -282,8 +425,9 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
      * Creates the employee table and sets up the table model.
      */
     private static void createEmployeeTable() {
-        String[] columnNames = {"Employee Number", "Last Name", "First Name", "SSS Number", "PhilHealth Number", "TIN", "Pag-IBIG Number"};
+        String[] columnNames = {"Employee Number", "Last Name", "First Name", "Status", "SSS Number", "PhilHealth Number", "TIN", "Pag-IBIG Number"};
         tableModel = new DefaultTableModel(columnNames, 0) {
+            /** [INHERITANCE] Overrides DefaultTableModel.isCellEditable to make rows read-only. */
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -294,25 +438,28 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         // Apply styling to the table
         styleEmployeeTable();
         updateEmployeeTable();
+        TableColumnSortUtil.install(employeeTable, tableModel, Set.of(0));
     }
 
     /**
      * Styles the employee table for a modern appearance.
      */
     private static void styleEmployeeTable() {
-        employeeTable.setFont(new Font("Garet", Font.PLAIN, 12));
-        employeeTable.setRowHeight(30);
-        employeeTable.setGridColor(new Color(220, 220, 220));
-        employeeTable.setSelectionBackground(BUTTON_ORANGE);
-        employeeTable.setSelectionForeground(TEXT_WHITE);
-        employeeTable.setShowGrid(true);
-        employeeTable.setIntercellSpacing(new Dimension(1, 1));
+        styleTable(employeeTable);
+    }
 
-        // Style the table header
-        employeeTable.getTableHeader().setFont(new Font("Garet", Font.BOLD, 12));
-        employeeTable.getTableHeader().setBackground(BUTTON_ORANGE);
-        employeeTable.getTableHeader().setForeground(TEXT_WHITE);
-        employeeTable.getTableHeader().setBorder(BorderFactory.createLineBorder(BUTTON_ORANGE));
+    private static void styleTable(JTable table) {
+        table.setFont(new Font("Garet", Font.PLAIN, 12));
+        table.setRowHeight(30);
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(BUTTON_ORANGE);
+        table.setSelectionForeground(TEXT_WHITE);
+        table.setShowGrid(true);
+        table.setIntercellSpacing(new Dimension(1, 1));
+        table.getTableHeader().setFont(new Font("Garet", Font.BOLD, 12));
+        table.getTableHeader().setBackground(BUTTON_ORANGE);
+        table.getTableHeader().setForeground(TEXT_WHITE);
+        table.getTableHeader().setBorder(BorderFactory.createLineBorder(BUTTON_ORANGE));
     }
 
     /**
@@ -325,12 +472,137 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
                 emp.getEmployeeNumber(),
                 emp.getLastName(),
                 emp.getFirstName(),
+                emp.getStatus(),
                 emp.getSssNumber(),
                 emp.getPhilHealthNumber(),
                 emp.getTin(),
                 emp.getPagIbigNumber()
             });
         }
+    }
+
+    private static void createPayrollDataTable() {
+        String[] columns = {
+            "Employee Number", "Last Name", "First Name", "Hourly Rate", "SSS", "PhilHealth",
+            "Pag-IBIG", "Withholding Tax", "Rice Subsidy", "Phone Allowance", "Clothing Allowance", "Base Salary",
+            "Net Salary"
+        };
+        payrollTableModel = new DefaultTableModel(columns, 0) {
+            /** [INHERITANCE] Overrides DefaultTableModel.isCellEditable to make rows read-only. */
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        payrollDataTable = new JTable(payrollTableModel);
+        styleTable(payrollDataTable);
+        updatePayrollDataTable();
+        TableColumnSortUtil.install(payrollDataTable, payrollTableModel,
+            Set.of(0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12));
+    }
+
+    private static String getPayrollTableSelectedMonth() {
+        if (employeePayrollMonthCombo != null) {
+            Object m = employeePayrollMonthCombo.getSelectedItem();
+            if (m != null) {
+                return m.toString();
+            }
+        }
+        return LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+    }
+
+    private static void updatePayrollDataTable() {
+        if (payrollTableModel == null) return;
+        payrollTableModel.setRowCount(0);
+        String month = getPayrollTableSelectedMonth();
+        for (Employee emp : employeeService.getAllEmployees()) {
+            PayrollData data = payrollProcessor.getPayrollData(emp.getEmployeeNumber());
+            PayrollResult result = payrollProcessor.processPayroll(emp, month);
+            payrollTableModel.addRow(new Object[] {
+                emp.getEmployeeNumber(),
+                emp.getLastName(),
+                emp.getFirstName(),
+                String.format("%.2f", data.getHourlyRate()),
+                String.format("%.2f", result != null ? result.getSssDeduction() : data.getSSSDeduction()),
+                String.format("%.2f", result != null ? result.getPhilHealthDeduction() : data.getPhilHealthDeduction()),
+                String.format("%.2f", result != null ? result.getPagIbigDeduction() : data.getPagIbigDeduction()),
+                String.format("%.2f", result != null ? result.getTaxDeduction() : data.getTaxDeduction()),
+                String.format("%.2f", data.getRiceSubsidy()),
+                String.format("%.2f", data.getPhoneAllowance()),
+                String.format("%.2f", data.getClothingAllowance()),
+                String.format("%.2f", result != null ? result.getBaseSalary() : data.getBaseSalary()),
+                String.format("%.2f", result != null ? result.getNetSalary() : 0.0)
+            });
+        }
+    }
+
+    private static void handleViewEmployeeFromPayrollTab(JFrame parentFrame) {
+        int selectedRow = payrollDataTable != null ? payrollDataTable.getSelectedRow() : -1;
+        if (selectedRow < 0) {
+            showModernMessage(parentFrame, "Please select an employee first", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String empNumber = String.valueOf(payrollDataTable.getValueAt(selectedRow, 0));
+        Employee selectedEmployee = findEmployeeById(empNumber);
+        if (selectedEmployee == null) {
+            showModernMessage(parentFrame, "Selected employee could not be found", "Not Found", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        showEmployeeDetails(parentFrame, selectedEmployee, roleGroup == RoleGroup.HR);
+    }
+
+    private static void handleEditPayrollFromPayrollTab(JFrame parentFrame) {
+        int selectedRow = payrollDataTable != null ? payrollDataTable.getSelectedRow() : -1;
+        if (selectedRow < 0) {
+            showModernMessage(parentFrame, "Please select an employee payroll row first", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String employeeId = String.valueOf(payrollDataTable.getValueAt(selectedRow, 0));
+        Employee employee = findEmployeeById(employeeId);
+        if (employee == null) {
+            showModernMessage(parentFrame, "Selected employee could not be found", "Not Found", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        showPayrollEditDialog(parentFrame, employee);
+    }
+
+    private static void createPersonalPayrollTable() {
+        String[] columns = {
+            "Employee Number", "Last Name", "First Name", "Hourly Rate", "SSS", "PhilHealth",
+            "Pag-IBIG", "Withholding Tax", "Rice Subsidy", "Phone Allowance", "Clothing Allowance", "Base Salary"
+        };
+        personalPayrollTableModel = new DefaultTableModel(columns, 0) {
+            /** [INHERITANCE] Overrides DefaultTableModel.isCellEditable to make rows read-only. */
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        personalPayrollTable = new JTable(personalPayrollTableModel);
+        styleTable(personalPayrollTable);
+    }
+
+    private static void updatePersonalPayrollTable(Employee employee) {
+        if (personalPayrollTableModel == null || employee == null) return;
+        personalPayrollTableModel.setRowCount(0);
+        PayrollData data = payrollProcessor.getPayrollData(employee.getEmployeeNumber());
+        String month = LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        PayrollResult result = payrollProcessor.processPayroll(employee, month);
+        personalPayrollTableModel.addRow(new Object[] {
+            employee.getEmployeeNumber(),
+            employee.getLastName(),
+            employee.getFirstName(),
+            String.format("%.2f", data.getHourlyRate()),
+            String.format("%.2f", result != null ? result.getSssDeduction() : data.getSSSDeduction()),
+            String.format("%.2f", result != null ? result.getPhilHealthDeduction() : data.getPhilHealthDeduction()),
+            String.format("%.2f", result != null ? result.getPagIbigDeduction() : data.getPagIbigDeduction()),
+            String.format("%.2f", result != null ? result.getTaxDeduction() : data.getTaxDeduction()),
+            String.format("%.2f", data.getRiceSubsidy()),
+            String.format("%.2f", data.getPhoneAllowance()),
+            String.format("%.2f", data.getClothingAllowance()),
+            String.format("%.2f", result != null ? result.getBaseSalary() : data.getBaseSalary())
+        });
     }
 
     /**
@@ -419,6 +691,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
      */
     private static JButton createModernButton(String text, Color bg) {
         JButton button = new JButton(text) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent for custom rounded button appearance. */
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -460,6 +733,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
      */
     private static JPanel createFooterPanel() {
         JPanel footerPanel = new JPanel(new BorderLayout()) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent to draw footer gradient background. */
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -508,16 +782,6 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         
         // Show confirmation message
         showModernMessage(null, "Employee and all associated records (payroll & attendance) deleted successfully", "Delete Successful", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    /**
-     * Shows the details screen for a selected employee.
-     *
-     * @param parentFrame The parent JFrame for positioning
-     * @param employee The Employee object to display
-     */
-    private static void showEmployeeDetails(JFrame parentFrame, Employee employee) {
-        showEmployeeDetails(parentFrame, employee, false);
     }
 
     private static void showEmployeeDetails(JFrame parentFrame, Employee employee, boolean readOnly) {
@@ -644,6 +908,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         addModernDetailField(detailsPanel, "First Name:", employee.getFirstName());
         addModernDetailField(detailsPanel, "Email:", employee.getEmail());
         addModernDetailField(detailsPanel, "Position:", employee.getPosition());
+        addModernDetailField(detailsPanel, "Status:", employee.getStatus());
         addModernDetailField(detailsPanel, "Phone:", employee.getPhone());
         addModernDetailField(detailsPanel, "Address:", employee.getAddress());
         addModernDetailField(detailsPanel, "SSS Number:", employee.getSssNumber());
@@ -685,10 +950,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         monthLabel.setFont(new Font("Garet", Font.BOLD, 14));
         monthLabel.setForeground(TEXT_BLACK);
 
-        JComboBox<String> monthCombo = new JComboBox<>(new String[]{
-            "January", "February", "March", "April", "May", "June", 
-            "July", "August", "September", "October", "November", "December"
-        });
+        JComboBox<String> monthCombo = new JComboBox<>(CALENDAR_MONTH_NAMES);
         monthCombo.setFont(new Font("Garet", Font.PLAIN, 12));
         monthCombo.setPreferredSize(new Dimension(150, 30));
 
@@ -791,17 +1053,23 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
-        PayrollData record = payrollProcessor.getPayrollData(employee.getEmployeeNumber());
-        if (record == null || record.getBaseSalary() <= 0) {
+        if (!payrollProcessor.hasPayrollRecord(employee.getEmployeeNumber())) {
             initializePayrollRecord(employee.getEmployeeNumber(), employee.getPosition(), 35000.0);
-            record = payrollProcessor.getPayrollData(employee.getEmployeeNumber());
         }
-        final PayrollData finalRecord = record;
+        PayrollData record = payrollProcessor.getPayrollData(employee.getEmployeeNumber());
 
-        JLabel salaryLabel = new JLabel("Base Salary:");
-        JTextField salaryField = new JTextField(String.valueOf(record.getBaseSalary()), 15);
+        JLabel baseSalaryLabel = new JLabel("Base Salary:");
+        JTextField baseSalaryField = new JTextField(String.valueOf(record.getBaseSalary()), 15);
         gbc.gridx = 0;
         gbc.gridy = 0;
+        mainPanel.add(baseSalaryLabel, gbc);
+        gbc.gridx = 1;
+        mainPanel.add(baseSalaryField, gbc);
+
+        JLabel salaryLabel = new JLabel("Hourly Rate:");
+        JTextField salaryField = new JTextField(String.valueOf(record.getHourlyRate()), 15);
+        gbc.gridx = 0;
+        gbc.gridy++;
         mainPanel.add(salaryLabel, gbc);
         gbc.gridx = 1;
         mainPanel.add(salaryField, gbc);
@@ -846,7 +1114,8 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         mainPanel.add(pagIbigField, gbc);
 
         JLabel taxLabel = new JLabel("Withholding Tax (₱):");
-        double computedTax = PayrollUtils.calculateWithholdingTax(record.getBaseSalary(), record.getRiceSubsidy(), record.getPhoneAllowance(), record.getClothingAllowance());
+        double estimatedMonthlyGross = record.calculateReferenceMonthlyGross();
+        double computedTax = PayrollUtils.calculateWithholdingTax(estimatedMonthlyGross, record.getRiceSubsidy(), record.getPhoneAllowance(), record.getClothingAllowance());
         JTextField taxField = new JTextField(String.format("%.2f", computedTax), 15);
         taxField.setEditable(false);
         gbc.gridx = 0;
@@ -911,22 +1180,25 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
 
         saveButton.addActionListener(e -> {
             try {
-                // Update payroll record with new values
-                double baseSalary = Double.parseDouble(salaryField.getText());
-                double sssAmount = PayrollUtils.calculateSSSAmount(baseSalary);
-                double philHealthAmount = PayrollUtils.calculatePhilHealthAmount(baseSalary);
-                double pagIbigAmount = PayrollUtils.calculatePagIbigAmount(baseSalary);
+                double baseSalary = Double.parseDouble(baseSalaryField.getText());
+                double hourlyRate = Double.parseDouble(salaryField.getText());
+                double refGross = hourlyRate * PayrollUtils.REFERENCE_PAYROLL_HOURS;
+                double sssAmount = PayrollUtils.calculateSSSAmount(refGross);
+                double philHealthAmount = PayrollUtils.calculatePhilHealthAmount(refGross);
+                double pagIbigAmount = PayrollUtils.calculatePagIbigAmount(refGross);
                 float riceSubsidy = Float.parseFloat(riceField.getText());
                 float phoneAllowance = Float.parseFloat(phoneField.getText());
                 float clothingAllowance = Float.parseFloat(clothingField.getText());
-                double withHoldingTax = PayrollUtils.calculateWithholdingTax(baseSalary, riceSubsidy, phoneAllowance, clothingAllowance);
+                double withHoldingTax = PayrollUtils.calculateWithholdingTax(refGross, riceSubsidy, phoneAllowance, clothingAllowance);
 
                 PayrollData newRecord = new PayrollData(
-                    baseSalary, sssAmount, philHealthAmount, pagIbigAmount, (float)withHoldingTax,
+                    baseSalary, hourlyRate, sssAmount, philHealthAmount, pagIbigAmount, (float)withHoldingTax,
                     riceSubsidy, phoneAllowance, clothingAllowance
                 );
                 payrollProcessor.updatePayrollData(employee.getEmployeeNumber(), newRecord);
                 updateSummaryArea(summaryArea, newRecord);
+                updatePayrollDataTable();
+                updatePersonalPayrollTable(employee);
 
                 JOptionPane.showMessageDialog(payrollFrame, "Payroll updated successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
             } catch (NumberFormatException ex) {
@@ -946,7 +1218,10 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
 
     private static void updateSummaryArea(JTextArea summaryArea, PayrollData record) {
         StringBuilder summary = new StringBuilder();
-        summary.append("Base Salary: ₱").append(String.format("%.2f", record.getBaseSalary())).append("\n");
+        summary.append("Base Salary (reference): ₱").append(String.format("%.2f", record.getBaseSalary())).append("\n");
+        summary.append("Hourly Rate: ₱").append(String.format("%.2f", record.getHourlyRate())).append("\n");
+        double estimatedGross = record.calculateReferenceMonthlyGross();
+        summary.append(String.format("Est. gross (%.0fh): ₱", PayrollUtils.REFERENCE_PAYROLL_HOURS)).append(String.format("%.2f", estimatedGross)).append("\n");
         summary.append("Total Deductions: ₱").append(String.format("%.2f", record.calculateTotalDeductions())).append("\n");
         summary.append("  - SSS: ₱").append(String.format("%.2f", record.getSSSDeduction())).append("\n");
         summary.append("  - PhilHealth: ₱").append(String.format("%.2f", record.getPhilHealthDeduction())).append("\n");
@@ -956,39 +1231,35 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         summary.append("  - Rice: ₱").append(String.format("%.2f", record.getRiceSubsidy())).append("\n");
         summary.append("  - Phone: ₱").append(String.format("%.2f", record.getPhoneAllowance())).append("\n");
         summary.append("  - Clothing: ₱").append(String.format("%.2f", record.getClothingAllowance())).append("\n");
-        summary.append("Net Salary: ₱").append(String.format("%.2f", record.calculateNetSalary()));
+        summary.append(String.format("Est. net (%.0fh): ₱", PayrollUtils.REFERENCE_PAYROLL_HOURS)).append(String.format("%.2f", record.calculateNetSalary()));
         summaryArea.setText(summary.toString());
     }
 
     /**
-     * Initializes a new payroll record for an employee with default rates based on position.
-     * Only creates a record if one does not already exist.
+     * Seeds payroll for an employee with a default base salary and zero hourly rate until payroll staff set rates.
+     * Deduction snapshots use reference gross from hourly only ({@link PayrollUtils#REFERENCE_PAYROLL_HOURS}).
      *
      * @param employeeId The employee's ID
      * @param position The employee's position
-     * @param baseSalary The employee's base salary
+     * @param defaultBaseSalary Display-only starting base salary
      */
-    private static void initializePayrollRecord(String employeeId, String position, double baseSalary) {
-        PayrollData existing = payrollProcessor.getPayrollData(employeeId);
-        if (existing == null || existing.getBaseSalary() <= 0) {
-            double sssAmount = PayrollUtils.calculateSSSAmount(baseSalary);
-            double philHealthAmount = PayrollUtils.calculatePhilHealthAmount(baseSalary);
-            double pagIbigAmount = PayrollUtils.calculatePagIbigAmount(baseSalary);
-            float withHoldingTax = 0.15f;
-            float riceSubsidy = 1500;
-            float phoneAllowance = 1000;
-            float clothingAllowance = 800;
-            if (position != null && position.equalsIgnoreCase("Manager")) {
-                withHoldingTax = 0.12f;
-                phoneAllowance = 800;
-                clothingAllowance = 600;
-            } else if (position != null && position.equalsIgnoreCase("HR")) {
-                withHoldingTax = 0.12f;
-            }
-            double tax = PayrollUtils.calculateWithholdingTax(baseSalary, riceSubsidy, phoneAllowance, clothingAllowance);
-            PayrollData record = new PayrollData(baseSalary, sssAmount, philHealthAmount, pagIbigAmount, (float) tax, riceSubsidy, phoneAllowance, clothingAllowance);
-            payrollProcessor.updatePayrollData(employeeId, record);
+    private static void initializePayrollRecord(String employeeId, String position, double defaultBaseSalary) {
+        if (payrollProcessor.hasPayrollRecord(employeeId)) return;
+        double hourlyRate = 0;
+        double refGross = hourlyRate * PayrollUtils.REFERENCE_PAYROLL_HOURS;
+        double sssAmount = PayrollUtils.calculateSSSAmount(refGross);
+        double philHealthAmount = PayrollUtils.calculatePhilHealthAmount(refGross);
+        double pagIbigAmount = PayrollUtils.calculatePagIbigAmount(refGross);
+        float riceSubsidy = 1500;
+        float phoneAllowance = 1000;
+        float clothingAllowance = 800;
+        if (position != null && position.equalsIgnoreCase("Manager")) {
+            phoneAllowance = 800;
+            clothingAllowance = 600;
         }
+        double tax = PayrollUtils.calculateWithholdingTax(refGross, riceSubsidy, phoneAllowance, clothingAllowance);
+        PayrollData record = new PayrollData(defaultBaseSalary, hourlyRate, sssAmount, philHealthAmount, pagIbigAmount, (float) tax, riceSubsidy, phoneAllowance, clothingAllowance);
+        payrollProcessor.updatePayrollData(employeeId, record);
     }
 
     /**
@@ -1017,8 +1288,23 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         JTextField pagIbigField = new JTextField(employee.getPagIbigNumber(), 20);
         JTextField emailField = new JTextField(employee.getEmail(), 20);
         JTextField positionField = new JTextField(employee.getPosition(), 20);
+        JComboBox<String> statusComboBox = new JComboBox<>(new String[]{"regular", "probationary"});
+        statusComboBox.setSelectedItem(
+            employee.getStatus() != null && employee.getStatus().equalsIgnoreCase("probationary")
+                ? "probationary" : "regular"
+        );
         JTextField addressField = new JTextField(employee.getAddress(), 20);
         JTextField phoneField = new JTextField(employee.getPhone(), 20);
+
+        // Input restrictions: prevent mixing numeric vs character fields.
+        InputFilters.setCharactersOnlyNoDigits(lastNameField);
+        InputFilters.setCharactersOnlyNoDigits(firstNameField);
+        InputFilters.setDigitsAndHyphenOnly(sssField);
+        InputFilters.setDigitsOnly(philHealthField);
+        InputFilters.setDigitsAndHyphenOnly(tinField);
+        InputFilters.setDigitsOnly(pagIbigField);
+        InputFilters.setCharactersOnlyNoDigits(positionField);
+        InputFilters.setDigitsAndHyphenOnly(phoneField);
 
         // Add form fields
         addFormField(mainPanel, "Last Name:", lastNameField, gbc, 0);
@@ -1029,8 +1315,9 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         addFormField(mainPanel, "Pag-IBIG Number:", pagIbigField, gbc, 5);
         addFormField(mainPanel, "Email:", emailField, gbc, 6);
         addFormField(mainPanel, "Position:", positionField, gbc, 7);
-        addFormField(mainPanel, "Address:", addressField, gbc, 8);
-        addFormField(mainPanel, "Phone:", phoneField, gbc, 9);
+        addFormField(mainPanel, "Status:", statusComboBox, gbc, 8);
+        addFormField(mainPanel, "Address:", addressField, gbc, 9);
+        addFormField(mainPanel, "Phone:", phoneField, gbc, 10);
 
         JButton submitButton = new JButton("Update Employee");
         submitButton.addActionListener(e -> {
@@ -1040,6 +1327,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
             String pagIbig = pagIbigField.getText().trim();
             String email = emailField.getText().trim();
             String phone = phoneField.getText().trim();
+            String status = String.valueOf(statusComboBox.getSelectedItem()).trim().toLowerCase();
 
             // Format validation
             String err = EmployeeValidationUtil.validateSss(sss);
@@ -1053,6 +1341,8 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
             err = EmployeeValidationUtil.validateEmail(email);
             if (err != null) { JOptionPane.showMessageDialog(updateEmpFrame, err, "Validation Error", JOptionPane.ERROR_MESSAGE); return; }
             err = EmployeeValidationUtil.validatePhone(phone);
+            if (err != null) { JOptionPane.showMessageDialog(updateEmpFrame, err, "Validation Error", JOptionPane.ERROR_MESSAGE); return; }
+            err = EmployeeValidationUtil.validateStatus(status);
             if (err != null) { JOptionPane.showMessageDialog(updateEmpFrame, err, "Validation Error", JOptionPane.ERROR_MESSAGE); return; }
 
             // Uniqueness: value must not be used by another employee (same employee may keep own value)
@@ -1096,6 +1386,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
             employee.setPagIbigNumber(pagIbig);
             employee.setEmail(email);
             employee.setPosition(positionField.getText().trim());
+            employee.setStatus(status);
             employee.setAddress(addressField.getText().trim());
             employee.setPhone(phone);
 
@@ -1104,10 +1395,17 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
                 JOptionPane.showMessageDialog(updateEmpFrame, validationError, "Validation Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            employeeService.updateEmployee(employee);
+            String updateErr = employeeService.updateEmployee(employee);
             updateEmployeeTable();
             updateEmpFrame.dispose();
-            JOptionPane.showMessageDialog(parentFrame, "Employee updated successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
+            if (updateErr != null) {
+                JOptionPane.showMessageDialog(parentFrame,
+                        "Employee saved, but login could not be synced: " + updateErr,
+                        "Credential sync warning",
+                        JOptionPane.WARNING_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(parentFrame, "Employee updated successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
+            }
         });
 
         JPanel buttonPanel = new JPanel();
@@ -1144,12 +1442,25 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         JTextField pagIbigField = new JTextField(20);
         JTextField emailField = new JTextField(20);
         JTextField positionField = new JTextField(20);
+        JComboBox<String> statusComboBox = new JComboBox<>(new String[]{"regular", "probationary"});
         JTextField addressField = new JTextField(20);
         JTextField phoneField = new JTextField(20);
-        JTextField salaryField = new JTextField(20);
+        JTextField baseSalaryField = new JTextField(20);
+        JTextField hourlyRateField = new JTextField(20);
         JTextField riceSubsidyField = new JTextField("1500", 20);
         JTextField phoneAllowanceField = new JTextField("1000", 20);
         JTextField clothingAllowanceField = new JTextField("800", 20);
+
+        // Input restrictions: prevent mixing numeric vs character fields.
+        InputFilters.setDigitsOnly(empNumberField);
+        InputFilters.setCharactersOnlyNoDigits(lastNameField);
+        InputFilters.setCharactersOnlyNoDigits(firstNameField);
+        InputFilters.setDigitsAndHyphenOnly(sssField);
+        InputFilters.setDigitsOnly(philHealthField);
+        InputFilters.setDigitsAndHyphenOnly(tinField);
+        InputFilters.setDigitsOnly(pagIbigField);
+        InputFilters.setCharactersOnlyNoDigits(positionField);
+        InputFilters.setDigitsAndHyphenOnly(phoneField);
 
         // Add form fields
         addFormField(mainPanel, "Employee Number:", empNumberField, gbc, 0);
@@ -1161,12 +1472,14 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         addFormField(mainPanel, "Pag-IBIG Number:", pagIbigField, gbc, 6);
         addFormField(mainPanel, "Email:", emailField, gbc, 7);
         addFormField(mainPanel, "Position:", positionField, gbc, 8);
-        addFormField(mainPanel, "Address:", addressField, gbc, 9);
-        addFormField(mainPanel, "Phone:", phoneField, gbc, 10);
-        addFormField(mainPanel, "Base Salary:", salaryField, gbc, 11);
-        addFormField(mainPanel, "Rice Subsidy:", riceSubsidyField, gbc, 12);
-        addFormField(mainPanel, "Phone Allowance:", phoneAllowanceField, gbc, 13);
-        addFormField(mainPanel, "Clothing Allowance:", clothingAllowanceField, gbc, 14);
+        addFormField(mainPanel, "Status:", statusComboBox, gbc, 9);
+        addFormField(mainPanel, "Address:", addressField, gbc, 10);
+        addFormField(mainPanel, "Phone:", phoneField, gbc, 11);
+        addFormField(mainPanel, "Base Salary:", baseSalaryField, gbc, 12);
+        addFormField(mainPanel, "Hourly Rate:", hourlyRateField, gbc, 13);
+        addFormField(mainPanel, "Rice Subsidy:", riceSubsidyField, gbc, 14);
+        addFormField(mainPanel, "Phone Allowance:", phoneAllowanceField, gbc, 15);
+        addFormField(mainPanel, "Clothing Allowance:", clothingAllowanceField, gbc, 16);
 
         JButton submitButton = new JButton("Add Employee");
         submitButton.addActionListener(e -> {
@@ -1178,6 +1491,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
                 String pagIbig = pagIbigField.getText().trim();
                 String email = emailField.getText().trim();
                 String phone = phoneField.getText().trim();
+                String status = String.valueOf(statusComboBox.getSelectedItem()).trim().toLowerCase();
 
                 // Format validation first
                 String err = EmployeeValidationUtil.validateEmployeeNumber(empNumber);
@@ -1193,6 +1507,8 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
                 err = EmployeeValidationUtil.validateEmail(email);
                 if (err != null) { JOptionPane.showMessageDialog(newEmpFrame, err, "Validation Error", JOptionPane.ERROR_MESSAGE); return; }
                 err = EmployeeValidationUtil.validatePhone(phone);
+                if (err != null) { JOptionPane.showMessageDialog(newEmpFrame, err, "Validation Error", JOptionPane.ERROR_MESSAGE); return; }
+                err = EmployeeValidationUtil.validateStatus(status);
                 if (err != null) { JOptionPane.showMessageDialog(newEmpFrame, err, "Validation Error", JOptionPane.ERROR_MESSAGE); return; }
 
                 // Uniqueness: employee number
@@ -1235,6 +1551,7 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
                     pagIbig,
                     email,
                     positionField.getText().trim(),
+                    status,
                     addressField.getText().trim(),
                     phone
                 );
@@ -1243,18 +1560,24 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
                     JOptionPane.showMessageDialog(newEmpFrame, validationError, "Validation Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                employeeService.addEmployee(newEmployee);
+                String addErr = employeeService.addEmployee(newEmployee);
+                if (addErr != null) {
+                    JOptionPane.showMessageDialog(newEmpFrame, addErr, "Could not add login", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
 
-                double baseSalary = Double.parseDouble(salaryField.getText());
+                double baseSalary = Double.parseDouble(baseSalaryField.getText());
+                double hourlyRate = Double.parseDouble(hourlyRateField.getText());
+                double refGross = hourlyRate * PayrollUtils.REFERENCE_PAYROLL_HOURS;
                 float riceSubsidy = Float.parseFloat(riceSubsidyField.getText());
                 float phoneAllowance = Float.parseFloat(phoneAllowanceField.getText());
                 float clothingAllowance = Float.parseFloat(clothingAllowanceField.getText());
-                double sssAmount = PayrollUtils.calculateSSSAmount(baseSalary);
-                double philHealthAmount = PayrollUtils.calculatePhilHealthAmount(baseSalary);
-                double pagIbigAmount = PayrollUtils.calculatePagIbigAmount(baseSalary);
-                double withHoldingTax = PayrollUtils.calculateWithholdingTax(baseSalary, riceSubsidy, phoneAllowance, clothingAllowance);
+                double sssAmount = PayrollUtils.calculateSSSAmount(refGross);
+                double philHealthAmount = PayrollUtils.calculatePhilHealthAmount(refGross);
+                double pagIbigAmount = PayrollUtils.calculatePagIbigAmount(refGross);
+                double withHoldingTax = PayrollUtils.calculateWithholdingTax(refGross, riceSubsidy, phoneAllowance, clothingAllowance);
                 PayrollData record = new PayrollData(
-                    baseSalary, sssAmount, philHealthAmount, pagIbigAmount, (float) withHoldingTax,
+                    baseSalary, hourlyRate, sssAmount, philHealthAmount, pagIbigAmount, (float) withHoldingTax,
                     riceSubsidy, phoneAllowance, clothingAllowance
                 );
                 payrollProcessor.updatePayrollData(newEmployee.getEmployeeNumber(), record);
@@ -1276,18 +1599,6 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
     }
 
     /**
-     * Adds a detail field (label and value) to a panel.
-     *
-     * @param panel The panel to add the field to
-     * @param label The label text
-     * @param value The value to display
-     */
-    private static void addDetailField(JPanel panel, String label, String value) {
-        panel.add(new JLabel(label));
-        panel.add(new JLabel(value != null ? value : ""));
-    }
-
-    /**
      * Adds a form field (label and input) to a panel.
      *
      * @param panel The panel to add the field to
@@ -1302,6 +1613,14 @@ public class EmployeeProfile extends BaseModuleScreen implements ModuleScreen {
         panel.add(new JLabel(label), gbc);
         gbc.gridx = 1;
         panel.add(field, gbc);
+    }
+
+    private static void addFormField(JPanel panel, String label, JComboBox<String> comboBox, GridBagConstraints gbc, int row) {
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        panel.add(new JLabel(label), gbc);
+        gbc.gridx = 1;
+        panel.add(comboBox, gbc);
     }
 
     private static Employee findEmployeeById(String empNumber) {

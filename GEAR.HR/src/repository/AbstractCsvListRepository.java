@@ -41,7 +41,30 @@ public abstract class AbstractCsvListRepository<T> {
      * [ABSTRACTION] [INHERITANCE] Splits a raw line into parts; default is comma. Override for quoted CSV.
      */
     protected String[] splitLine(String line) {
-        return line.split(",", -1);
+        if (line == null) return new String[0];
+        List<String> parts = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                // Handle escaped quote inside quoted field ("")
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                parts.add(current.toString().trim());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        parts.add(current.toString().trim());
+        return parts.toArray(new String[0]);
     }
 
     /**

@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class EmployeeRepository extends AbstractCsvListRepository<Employee> implements IEmployeeRepository {
     private static final String FILE = "csv/employees.csv";
-    private static final String HEADER = "EmployeeNumber,LastName,FirstName,SSS,PhilHealth,TIN,PagIBIG,Email,Position,Address,Phone";
+    private static final String HEADER = "EmployeeNumber,LastName,FirstName,SSS,PhilHealth,TIN,PagIBIG,Email,Position,Status,Address,Phone";
 
     /** [ABSTRACTION] [INHERITANCE] Overrides split to support quoted CSV fields. */
     @Override
@@ -35,10 +35,10 @@ public class EmployeeRepository extends AbstractCsvListRepository<Employee> impl
     /** [ABSTRACTION] [INHERITANCE] Parses one CSV row into an Employee; null if invalid. */
     @Override
     protected Employee parseLine(String[] parts) {
-        if (parts == null || parts.length < 11) return null;
+        if (parts == null || parts.length < 12) return null;
         return new Employee(
             parts[0], parts[1], parts[2], parts[3], parts[4],
-            parts[5], parts[6], parts[7], parts[8], parts[9], parts[10]
+            parts[5], parts[6], parts[7], parts[8], parts[9], parts[10], parts[11]
         );
     }
 
@@ -49,7 +49,7 @@ public class EmployeeRepository extends AbstractCsvListRepository<Employee> impl
             emp.getEmployeeNumber(), emp.getLastName(), emp.getFirstName(),
             emp.getSssNumber(), emp.getPhilHealthNumber(), emp.getTin(),
             emp.getPagIbigNumber(), emp.getEmail(), emp.getPosition(),
-            emp.getAddress(), emp.getPhone()
+            emp.getStatus(), emp.getAddress(), emp.getPhone()
         };
     }
 

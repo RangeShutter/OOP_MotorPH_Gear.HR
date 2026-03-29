@@ -9,6 +9,9 @@ public class PayrollResult extends AbstractEntity {
     private final String employeeName;
     private final String position;
     private final String month;
+    private final double hourlyRate;
+    private final double workedHours;
+    private final double grossPay;
     private final double baseSalary;
     private final double sssDeduction;
     private final double philHealthDeduction;
@@ -23,6 +26,7 @@ public class PayrollResult extends AbstractEntity {
 
     /** [INHERITANCE] Calls super(employeeId) to set AbstractEntity.entityId. */
     public PayrollResult(String employeeId, String employeeName, String position, String month,
+                         double hourlyRate, double workedHours, double grossPay,
                          double baseSalary, double sssDeduction, double philHealthDeduction, double pagIbigDeduction,
                          double taxDeduction, double totalDeductions,
                          double riceSubsidy, double phoneAllowance, double clothingAllowance, double totalAllowances,
@@ -31,6 +35,9 @@ public class PayrollResult extends AbstractEntity {
         this.employeeName = employeeName != null ? employeeName : "";
         this.position = position != null ? position : "";
         this.month = month != null ? month : "";
+        this.hourlyRate = hourlyRate;
+        this.workedHours = workedHours;
+        this.grossPay = grossPay;
         this.baseSalary = baseSalary;
         this.sssDeduction = sssDeduction;
         this.philHealthDeduction = philHealthDeduction;
@@ -49,6 +56,9 @@ public class PayrollResult extends AbstractEntity {
     public String getEmployeeName() { return employeeName; }
     public String getPosition() { return position; }
     public String getMonth() { return month; }
+    public double getHourlyRate() { return hourlyRate; }
+    public double getWorkedHours() { return workedHours; }
+    public double getGrossPay() { return grossPay; }
     public double getBaseSalary() { return baseSalary; }
     public double getSssDeduction() { return sssDeduction; }
     public double getPhilHealthDeduction() { return philHealthDeduction; }
@@ -64,7 +74,7 @@ public class PayrollResult extends AbstractEntity {
     /** [INTERFACE] Implements Validatable.isValid. [INHERITANCE] Overrides AbstractEntity.isValid. */
     @Override
     public boolean isValid() {
-        return baseSalary >= 0 && sssDeduction >= 0 && philHealthDeduction >= 0 && pagIbigDeduction >= 0
+        return hourlyRate >= 0 && workedHours >= 0 && grossPay >= 0 && baseSalary >= 0 && sssDeduction >= 0 && philHealthDeduction >= 0 && pagIbigDeduction >= 0
                 && taxDeduction >= 0 && totalDeductions >= 0 && riceSubsidy >= 0 && phoneAllowance >= 0
                 && clothingAllowance >= 0 && totalAllowances >= 0 && netSalary >= 0;
     }
@@ -80,6 +90,9 @@ public class PayrollResult extends AbstractEntity {
         double value;
         switch (field) {
             case "baseSalary": value = baseSalary; break;
+            case "hourlyRate": value = hourlyRate; break;
+            case "workedHours": value = workedHours; break;
+            case "grossPay": value = grossPay; break;
             case "sssDeduction": value = sssDeduction; break;
             case "philHealthDeduction": value = philHealthDeduction; break;
             case "pagIbigDeduction": value = pagIbigDeduction; break;

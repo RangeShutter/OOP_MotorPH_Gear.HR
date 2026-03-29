@@ -17,8 +17,12 @@ public interface IAttendanceService {
     boolean hasRecord(String employeeId, String date);
     /** [INTERFACE] Adds or replaces an attendance record. */
     void addRecord(AttendanceRecord record);
+    /** [INTERFACE] Removes one attendance record for the given employee and date. */
+    void removeRecord(String employeeId, String date);
     /** [INTERFACE] Removes all attendance records for the given employee. */
     void removeAttendanceRecords(String employeeId);
     /** [INTERFACE] Removes all records and persists. */
     void clearAll();
+    /** [INTERFACE] Returns total worked hours for employee in a month name (e.g., "March"). */
+    double getWorkedHoursForMonth(String employeeId, String month);
 }

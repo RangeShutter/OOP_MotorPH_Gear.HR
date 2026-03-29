@@ -23,12 +23,12 @@ import java.util.stream.Collectors;
 public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScreen {
 
     /** [POLYMORPHISM] Single instance used when opening this screen via ModuleScreen. */
-    public static final ModuleScreen INSTANCE = new LeaveManagementScreen();
+    public static final LeaveManagementScreen INSTANCE = new LeaveManagementScreen();
 
-    private static ILeaveService leaveService;
-    private static IEmployeeService employeeService;
-    private static RoleGroup roleGroup;
-    private static String currentUserId;
+    private ILeaveService leaveService;
+    private IEmployeeService employeeService;
+    private RoleGroup roleGroup;
+    private String currentUserId;
 
     private static JTable leaveTable;
     private static DefaultTableModel tableModel;
@@ -41,10 +41,10 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
     /** [INTERFACE] Implements ModuleScreen.show; obtains services from ctx and builds UI. */
     @Override
     public void show(JFrame parentFrame, String userId, String role, RoleGroup group, ApplicationContext ctx) {
-        leaveService = ctx.getLeaveService();
-        employeeService = ctx.getEmployeeService();
-        roleGroup = group != null ? group : RoleGroup.NORMAL;
-        currentUserId = userId;
+        this.leaveService = ctx.getLeaveService();
+        this.employeeService = ctx.getEmployeeService();
+        this.roleGroup = group != null ? group : RoleGroup.NORMAL;
+        this.currentUserId = userId;
         JFrame frame = createFrame(parentFrame, "Leave Management", 1000, 750);
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(BACKGROUND_WHITE);
@@ -60,10 +60,10 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
     /** Legacy entry point; callers should use ModuleScreen.show instead. */
     public static void showLeaveScreen(JFrame parentFrame, String userId, String role, RoleGroup group,
                                        ILeaveService lsvc, IEmployeeService empSvc) {
-        leaveService = lsvc;
-        employeeService = empSvc;
-        roleGroup = group != null ? group : RoleGroup.NORMAL;
-        currentUserId = userId;
+        INSTANCE.leaveService = lsvc;
+        INSTANCE.employeeService = empSvc;
+        INSTANCE.roleGroup = group != null ? group : RoleGroup.NORMAL;
+        INSTANCE.currentUserId = userId;
         JFrame frame = createFrame(parentFrame, "Leave Management", 1000, 750);
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(BACKGROUND_WHITE);
@@ -80,7 +80,7 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
     private static JPanel createContentPanel(JFrame frame) {
         JPanel content = new JPanel(new BorderLayout());
         content.setBackground(BACKGROUND_WHITE);
-        if (roleGroup != RoleGroup.PAYROLL) {
+        if (INSTANCE.roleGroup != RoleGroup.PAYROLL) {
             content.add(createFormPanel(frame), BorderLayout.NORTH);
         }
         content.add(createTablePanel(frame), BorderLayout.CENTER);
@@ -99,14 +99,14 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
         c.anchor = GridBagConstraints.WEST;
 
         employeeComboBox = createEmployeeComboBox();
-        if (roleGroup == RoleGroup.NORMAL && currentUserId != null) {
+        if (INSTANCE.roleGroup == RoleGroup.NORMAL && INSTANCE.currentUserId != null) {
             List<String> selfOnly = new ArrayList<>();
-            if (employeeService != null) {
-                Employee self = employeeService.getAllEmployees().stream()
-                    .filter(emp -> currentUserId.equals(emp.getEmployeeNumber())).findFirst().orElse(null);
-                selfOnly.add(self != null ? currentUserId + " - " + self.getFirstName() + " " + self.getLastName() : currentUserId);
+            if (INSTANCE.employeeService != null) {
+                Employee self = INSTANCE.employeeService.getAllEmployees().stream()
+                    .filter(emp -> INSTANCE.currentUserId.equals(emp.getEmployeeNumber())).findFirst().orElse(null);
+                selfOnly.add(self != null ? INSTANCE.currentUserId + " - " + self.getFirstName() + " " + self.getLastName() : INSTANCE.currentUserId);
             } else {
-                selfOnly.add(currentUserId);
+                selfOnly.add(INSTANCE.currentUserId);
             }
             employeeComboBox.setModel(new DefaultComboBoxModel<>(selfOnly.toArray(new String[0])));
             employeeComboBox.setEnabled(false);
@@ -154,8 +154,8 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
     private static JComboBox<String> createEmployeeComboBox() {
         List<String> opts = new ArrayList<>();
         opts.add("Select Employee");
-        if (employeeService != null) {
-            for (Employee e : employeeService.getAllEmployees()) {
+        if (INSTANCE.employeeService != null) {
+            for (Employee e : INSTANCE.employeeService.getAllEmployees()) {
                 opts.add(e.getEmployeeNumber() + " - " + e.getFirstName() + " " + e.getLastName());
             }
         }
@@ -174,6 +174,7 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
         ));
         String[] cols = {"Employee ID", "Start Date", "End Date", "Reason", "Status"};
         tableModel = new DefaultTableModel(cols, 0) {
+            /** [INHERITANCE] Overrides DefaultTableModel.isCellEditable to make rows read-only. */
             @Override
             public boolean isCellEditable(int r, int col) { return false; }
         };
@@ -201,7 +202,7 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
         title.setFont(new Font("Garet", Font.BOLD, 16));
         title.setForeground(TEXT_BLACK);
         top.add(title);
-        if (roleGroup == RoleGroup.HR || roleGroup == RoleGroup.IT_ADMIN) {
+        if (INSTANCE.roleGroup == RoleGroup.HR || INSTANCE.roleGroup == RoleGroup.IT_ADMIN) {
             top.add(Box.createHorizontalStrut(20));
             top.add(deleteBtn);
             top.add(Box.createHorizontalStrut(20));
@@ -218,10 +219,10 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
 
     private static void refreshTable() {
         tableModel.setRowCount(0);
-        if (leaveService == null) return;
-        List<LeaveRequest> list = roleGroup == RoleGroup.NORMAL && currentUserId != null
-            ? leaveService.getAllLeaveRequests().stream().filter(lr -> currentUserId.equals(lr.getEmployeeId())).collect(Collectors.toList())
-            : leaveService.getAllLeaveRequests();
+        if (INSTANCE.leaveService == null) return;
+        List<LeaveRequest> list = INSTANCE.roleGroup == RoleGroup.NORMAL && INSTANCE.currentUserId != null
+            ? INSTANCE.leaveService.getAllLeaveRequests().stream().filter(lr -> INSTANCE.currentUserId.equals(lr.getEmployeeId())).collect(Collectors.toList())
+            : INSTANCE.leaveService.getAllLeaveRequests();
         for (LeaveRequest lr : list) {
             tableModel.addRow(new Object[]{
                 lr.getEmployeeId(),
@@ -256,13 +257,13 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
             JOptionPane.showMessageDialog(frame, "Start date must be on or before end date.", "Input Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        if (leaveService.hasOverlappingLeaveRequest(employeeId, start, end)) {
+        if (INSTANCE.leaveService.hasOverlappingLeaveRequest(employeeId, start, end)) {
             JOptionPane.showMessageDialog(frame,
                 "You already have a leave request that overlaps these dates. Please choose different dates or delete the existing request.",
                 "Overlapping Request", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        leaveService.addLeaveRequest(req);
+        INSTANCE.leaveService.addLeaveRequest(req);
         refreshTable();
         JOptionPane.showMessageDialog(frame, "Leave request submitted.", "Success", JOptionPane.INFORMATION_MESSAGE);
         startDateField.setText(LocalDate.now().toString());
@@ -285,7 +286,7 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
             return;
         }
         String newStatus = (String) statusComboBox.getSelectedItem();
-        leaveService.updateLeaveRequestStatus(employeeId, start, newStatus);
+        INSTANCE.leaveService.updateLeaveRequestStatus(employeeId, start, newStatus);
         refreshTable();
         JOptionPane.showMessageDialog(frame, "Status updated.", "Done", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -306,13 +307,14 @@ public class LeaveManagementScreen extends BaseModuleScreen implements ModuleScr
         int confirm = JOptionPane.showConfirmDialog(frame, "Delete this leave request?", "Confirm Delete",
             JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) return;
-        leaveService.deleteLeaveRequest(employeeId, start);
+        INSTANCE.leaveService.deleteLeaveRequest(employeeId, start);
         refreshTable();
         JOptionPane.showMessageDialog(frame, "Leave request deleted.", "Done", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private static JButton createStyledButton(String text, Color bg) {
         JButton b = new JButton(text) {
+            /** [INHERITANCE] Overrides JComponent.paintComponent for custom rounded button appearance. */
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();

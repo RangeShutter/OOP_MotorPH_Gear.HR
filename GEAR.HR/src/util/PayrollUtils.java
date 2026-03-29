@@ -1,10 +1,20 @@
 package util;
 
+/**
+ * [ENCAPSULATION] Utility class: private constructor prevents instantiation; static payroll calculation helpers.
+ */
 public final class PayrollUtils {
 
+    /** [ENCAPSULATION] Prevents subclassing and direct instantiation of this utility type. */
     private PayrollUtils() {
         // Utility class; prevent instantiation
     }
+
+    /**
+     * Standard month hours used only for estimating gross when persisting deduction snapshots
+     * (CSV / edit form). Actual payroll still uses {@code hourlyRate × workedHours} per period.
+     */
+    public static final double REFERENCE_PAYROLL_HOURS = 160.0;
 
     // Shared SSS contribution brackets
     private static final double[][] SSS_BRACKETS = {

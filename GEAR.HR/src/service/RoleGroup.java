@@ -8,6 +8,7 @@ import java.util.Set;
 /**
  * Role-based access: classifies user role string into HR, Payroll, IT/Admin, or Normal Employee group.
  * Used by Main and screens to show the correct homepage and enforce access restrictions.
+ * [POLYMORPHISM] Enum + factory {@link #fromRole(String)} classify roles without string subclassing.
  */
 public enum RoleGroup {
     HR,
@@ -37,6 +38,7 @@ public enum RoleGroup {
     /**
      * Maps the role string (from user_credentials.csv) to the corresponding group.
      * All roles not in HR, Payroll, or IT/Admin sets are NORMAL.
+     * [ABSTRACTION] Hides role-set details behind a single entry point.
      */
     public static RoleGroup fromRole(String role) {
         if (role == null) return NORMAL;

@@ -29,10 +29,10 @@ public interface IEmployeeService {
     Employee findEmployeeByEmail(String email);
     /** [INTERFACE] Finds employee by phone. */
     Employee findEmployeeByPhone(String phone);
-    /** [INTERFACE] Adds an employee if not already present. */
-    void addEmployee(Employee emp);
-    /** [INTERFACE] Updates existing employee by employee number. */
-    void updateEmployee(Employee emp);
+    /** [INTERFACE] Adds an employee if not already present. Null = success; non-null = error message (e.g. credential sync failed). */
+    String addEmployee(Employee emp);
+    /** [INTERFACE] Updates existing employee by employee number. Null = success; non-null = warning (employee saved; credential sync may have failed). */
+    String updateEmployee(Employee emp);
     /** [INTERFACE] Removes employee by employee number. */
     void deleteEmployee(String empNumber);
 }

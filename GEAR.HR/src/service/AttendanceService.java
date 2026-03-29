@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.format.TextStyle;
+import java.util.Locale;
 
 /**
  * Manages attendance records; persistence delegated to repository (OOP redesign - GEAR.HR).
@@ -61,6 +64,14 @@ public class AttendanceService implements IAttendanceService {
         save();
     }
 
+    /** [INTERFACE] Implements IAttendanceService.removeRecord. */
+    @Override
+    public void removeRecord(String employeeId, String date) {
+        if (employeeId == null || date == null) return;
+        attendanceRecords.remove(employeeId + "|" + date);
+        save();
+    }
+
     /** [INTERFACE] Implements IAttendanceService.removeAttendanceRecords. */
     @Override
     public void removeAttendanceRecords(String employeeId) {
@@ -73,5 +84,28 @@ public class AttendanceService implements IAttendanceService {
     public void clearAll() {
         attendanceRecords.clear();
         save();
+    }
+
+    /** [INTERFACE] Implements IAttendanceService.getWorkedHoursForMonth. */
+    @Override
+    public double getWorkedHoursForMonth(String employeeId, String month) {
+        if (employeeId == null || month == null) return 0.0;
+        int totalMinutes = 0;
+        for (AttendanceRecord record : attendanceRecords.values()) {
+            if (!employeeId.equals(record.getEmployeeId())) continue;
+            if (record.getTimeIn() == null || record.getTimeIn().isBlank()) continue;
+            if (record.getTimeOut() == null || record.getTimeOut().isBlank()) continue;
+            int minutesWorked = record.getMinutesWorked();
+            if (minutesWorked <= 0) continue;
+            try {
+                LocalDate recordDate = LocalDate.parse(record.getDate());
+                String monthName = recordDate.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+                if (!monthName.equalsIgnoreCase(month.trim())) continue;
+                totalMinutes += minutesWorked;
+            } catch (Exception ignored) {
+                // Skip malformed date rows.
+            }
+        }
+        return totalMinutes / 60.0;
     }
 }

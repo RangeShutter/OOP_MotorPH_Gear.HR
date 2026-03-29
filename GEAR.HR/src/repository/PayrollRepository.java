@@ -19,7 +19,7 @@ import java.util.Map;
  */
 public class PayrollRepository implements IPayrollRepository {
     private static final String FILE = "csv/payroll_records.csv";
-    private static final String HEADER = "EmployeeID,BaseSalary,SSSAmount,PhilHealthAmount,PagIBIGAmount,WithholdingTax,RiceSubsidy,PhoneAllowance,ClothingAllowance";
+    private static final String HEADER = "EmployeeID,BaseSalary,HourlyRate,SSSAmount,PhilHealthAmount,PagIBIGAmount,WithholdingTax,RiceSubsidy,PhoneAllowance,ClothingAllowance";
 
     /** [INTERFACE] Implements IPayrollRepository.load. */
     @Override
@@ -31,17 +31,18 @@ public class PayrollRepository implements IPayrollRepository {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(",", -1);
-                if (data.length >= 9) {
+                if (data.length >= 10) {
                     String id = data[0].trim();
                     double base = Double.parseDouble(data[1]);
-                    double sss = Double.parseDouble(data[2]);
-                    double phil = Double.parseDouble(data[3]);
-                    double pag = Double.parseDouble(data[4]);
-                    float tax = Float.parseFloat(data[5]);
-                    float rice = Float.parseFloat(data[6]);
-                    float phone = Float.parseFloat(data[7]);
-                    float cloth = Float.parseFloat(data[8]);
-                    map.put(id, new PayrollData(base, sss, phil, pag, tax, rice, phone, cloth));
+                    double hourlyRate = Double.parseDouble(data[2]);
+                    double sss = Double.parseDouble(data[3]);
+                    double phil = Double.parseDouble(data[4]);
+                    double pag = Double.parseDouble(data[5]);
+                    float tax = Float.parseFloat(data[6]);
+                    float rice = Float.parseFloat(data[7]);
+                    float phone = Float.parseFloat(data[8]);
+                    float cloth = Float.parseFloat(data[9]);
+                    map.put(id, new PayrollData(base, hourlyRate, sss, phil, pag, tax, rice, phone, cloth));
                 }
             }
         } catch (IOException | NumberFormatException e) {
@@ -61,6 +62,7 @@ public class PayrollRepository implements IPayrollRepository {
                 w.println(String.join(",",
                     e.getKey(),
                     String.valueOf(d.getBaseSalary()),
+                    String.valueOf(d.getHourlyRate()),
                     String.valueOf(d.getSssAmount()),
                     String.valueOf(d.getPhilHealthAmount()),
                     String.valueOf(d.getPagIbigAmount()),
